@@ -1,4 +1,3 @@
-import { dialog } from '@ablogcms/dialog';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,13 +6,12 @@ import type { MigrationApplyResponse, MigrationDiffResponse, ModuleMigrationCand
 import ModuleMigrationAdmin from './module-migration-admin';
 
 vi.mock('../hooks/use-module-migration');
-vi.mock('@ablogcms/dialog', () => ({
-  dialog: { confirm: vi.fn(), alert: vi.fn() },
-}));
 
 const mockedUseModuleMigration = vi.mocked(useModuleMigration);
-const mockedConfirm = vi.mocked(dialog.confirm);
-const mockedAlert = vi.mocked(dialog.alert);
+// window.ACMS.Library.dialog は vitest.setup.ts でモック済み(@ablogcms/dialogは
+// バンドルせず本体が公開する共有インスタンスを呼ぶ。mount-module-migration-admin.tsx参照)。
+const mockedConfirm = vi.mocked(window.ACMS.Library.dialog.confirm);
+const mockedAlert = vi.mocked(window.ACMS.Library.dialog.alert);
 
 function candidate(overrides: Partial<ModuleMigrationCandidate> = {}): ModuleMigrationCandidate {
   return {

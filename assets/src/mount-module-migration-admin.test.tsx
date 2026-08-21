@@ -4,16 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyMigration, detectModules, fetchDiff } from './api';
 import { mountModuleMigrationAdminFromAttributes } from './mount-module-migration-admin';
 
-// api.ts だけをモックし、@ablogcms/dialog は実物を使う。
-// このプラグインは@ablogcms/*を自身のadmin.jsへ独立してバンドルしているため、dialog.confirm()を
-// 解決させるにはmount関数自身がバンドルされた自分の<DialogContainer>を用意している必要がある
-// (実際のブラウザでの確認で、これが無いとdialog.confirm()が永久に未解決のまま止まる不具合を発見した)。
-// モックしてしまうとこの結線をテストで検証できなくなるため、意図的に実物を使う。
+// api.ts をモックする。確認/アラートダイアログは window.ACMS.Library.dialog(vitest.setup.tsで
+// モック済み)を呼ぶ経路になっており、@ablogcms/dialogを独立してバンドルしないため
+// DialogContainerのマウントは不要(mount-module-migration-admin.tsx参照)。
 vi.mock('./api');
 
 const mockedDetect = vi.mocked(detectModules);
 const mockedFetchDiff = vi.mocked(fetchDiff);
 const mockedApply = vi.mocked(applyMigration);
+const mockedConfirm = vi.mocked(window.ACMS.Library.dialog.confirm);
+const mockedAlert = vi.mocked(window.ACMS.Library.dialog.alert);
 
 let container: HTMLElement;
 
@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe('mountModuleMigrationAdminFromAttributes', () => {
-  it('dialog.confirm()が実際に解決し、確認後にapplyMigration()が呼ばれる(DialogContainer結線の実機相当テスト)', async () => {
+  it('window.ACMS.Library.dialog経由で確認し、確認後にapplyMigration()が呼ばれる', async () => {
     const user = userEvent.setup();
     mockedDetect.mockResolvedValue({
       success: true,
@@ -56,6 +56,7 @@ describe('mountModuleMigrationAdminFromAttributes', () => {
         isBlocked: false,
       },
     });
+    mockedConfirm.mockResolvedValue(true);
     mockedApply.mockResolvedValue({
       success: true,
       result: { moduleId: 1, oldModuleName: 'Plugin_Schedule', newModuleName: 'Schedule', writtenConfig: {}, notes: [] },
@@ -65,21 +66,12 @@ describe('mountModuleMigrationAdminFromAttributes', () => {
     const controller = mountModuleMigrationAdminFromAttributes(container);
 
     await waitFor(() => expect(mockedDetect).toHaveBeenCalled());
-    await screen.findByRole('button', { name: '差分を確認' });
     await user.click(await screen.findByRole('button', { name: '差分を確認' }));
     await user.click(await screen.findByRole('button', { name: 'この内容で適用する' }));
 
-    // dialog.confirm()が実際にDialogContainer経由でモーダルを表示することを確認する。
-    // (window.ACMS.i18nはテスト環境ではキーをそのまま返すモックのため、ラベルは"dialog.ok"になる。
-    // React StrictModeの開発時二重マウントの影響で、直前に開いていたDiffPreviewModalが
-    // 一時的にaria-hidden化されるタイミングと重なりうるため、hidden:trueで検索する)
-    await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'dialog.ok', hidden: true }).length).toBeGreaterThan(0);
-    });
-    const [okButton] = screen.getAllByRole('button', { name: 'dialog.ok', hidden: true });
-    await user.click(okButton);
-
+    await waitFor(() => expect(mockedConfirm).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockedApply).toHaveBeenCalledWith(1, 1, false));
+    await waitFor(() => expect(mockedAlert).toHaveBeenCalledWith('移行を適用しました'));
 
     controller.unmount();
   });

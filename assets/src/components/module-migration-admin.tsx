@@ -1,4 +1,3 @@
-import { dialog } from '@ablogcms/dialog';
 import Badge from '@ablogcms/components/badge';
 import Button from '@ablogcms/components/button';
 import Spinner from '@ablogcms/components/spinner';
@@ -76,7 +75,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
     if (selectedModule === null) {
       return;
     }
-    const confirmed = await dialog.confirm(
+    const confirmed = await ACMS.Library.dialog.confirm(
       '移行を適用します。適用前の状態はスナップショットとして保存され、後から元に戻せます。よろしいですか？'
     );
     if (!confirmed) {
@@ -89,7 +88,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
     const response = await apply(selectedModule.moduleId, optIn);
     if (response !== null) {
       setSelectedModule(null);
-      await dialog.alert('移行を適用しました');
+      await ACMS.Library.dialog.alert('移行を適用しました');
     }
   };
 
@@ -97,13 +96,13 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
     if (applyResult === null) {
       return;
     }
-    const confirmed = await dialog.confirm('直前に適用した移行を元に戻します。よろしいですか？');
+    const confirmed = await ACMS.Library.dialog.confirm('直前に適用した移行を元に戻します。よろしいですか？');
     if (!confirmed) {
       return;
     }
     const succeeded = await rollback(applyResult.snapshotId);
     if (succeeded) {
-      await dialog.alert('ロールバックしました');
+      await ACMS.Library.dialog.alert('ロールバックしました');
     }
   };
 
