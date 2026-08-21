@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "非推奨モジュールから代替モジュールへの設定移行を支援するa-blog cms拡張アプリの管理画面UI",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "webpack --mode production --config webpack.prod.js",
-    "dev": "webpack --watch --mode development --config webpack.dev.js",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "tsc": "tsc --noEmit"
   },
   "repository": {
@@ -26,10 +27,7 @@
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "ts-loader": "^9.6.2",
-    "typescript": "~6.0.3",
-    "webpack": "^5.109.2",
-    "webpack-cli": "^7.2.2",
-    "webpack-merge": "^6.0.1"
+    "tsdown": "^0.22.14",
+    "typescript": "~6.0.3"
   }
 }
