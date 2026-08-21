@@ -4,6 +4,9 @@
   "description": "非推奨モジュールから代替モジュールへの設定移行を支援するa-blog cms拡張アプリの管理画面UI",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
