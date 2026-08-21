@@ -1,6 +1,6 @@
-# acms-deprecated-module-migration
+# DeprecatedModuleMigration for a-blog cms
 
-非推奨モジュールから代替モジュールへの設定移行を支援する **a-blog cms** 拡張アプリ（プラグイン）です。
+非推奨モジュールから代替モジュールへの設定移行を支援する **a-blog cms** の拡張アプリです。
 `acms-plugin-skeleton` をベースに、`ablogcms/testing-framework` によるテスト環境と CI/CD 一式を備えています。
 
 ## できること
@@ -26,14 +26,22 @@
 
 ルール（URLパターン別の設定上書き）で個別に上書きされている設定がある場合、差分確認画面にその件数が警告として表示されます。適用時は、ルール無し(既定)の設定と同じ変換ルールで、各ルールの設定もそれぞれのルールIDのまま移行されます（自動移行不可と判定されたルールがあれば、その分だけ適用結果に手動確認が必要な旨を表示します）。
 
-## 要件
+## 動作環境
 
-- **PHP:** 8.1 – 8.5
-- **a-blog cms:** 3.2.27 以降
+- a-blog cms: Ver. 3.2.27 以降 (3.3+ not tested yet)
+- PHP: 8.1 – 8.5 (8.6+ not tested yet)
+
+## ダウンロード
+
+[DeprecatedModuleMigration for a-blog cms](https://github.com/appleple/acms-deprecated-module-migration/releases/latest/download/DeprecatedModuleMigration.zip)
+
+利用するためには最新リリースから zip をダウンロード後、解凍して **extension/plugins** に設置してください。
+
+- extension/plugins/DeprecatedModuleMigration
 
 ## インストール
 
-GitHub Releases からビルド済み zip をダウンロードし、`extension/plugins/DeprecatedModuleMigration/` に展開してください。管理画面の「アプリ」からインストール・有効化すると、サイドバーに移行機能へのリンクが追加されます。
+管理ページ > 拡張アプリより「拡張アプリ管理」のページに移動し、DeprecatedModuleMigration をインストール・有効化してください。サイドバーに移行機能へのリンクが追加されます。
 
 ## 構成
 
