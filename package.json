@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsdown",
+    "postbuild": "node scripts/check-bundle.mjs",
     "dev": "tsdown --watch",
     "tsc": "tsc --noEmit",
     "test": "vitest run",

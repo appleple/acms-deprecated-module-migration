@@ -19,7 +19,12 @@ export default defineConfig((options) => ({
     entryFileNames: '[name].js',
   },
   deps: {
-    alwaysBundle: [/^@ablogcms\//, 'react', 'react-dom'],
+    // 'react'/'react-dom' の完全一致だけでは 'react-dom/client' のようなサブパス importが
+    // マッチせず外部化されたままになり、ブラウザで
+    // "Failed to resolve module specifier react-dom/client" として実際に壊れる
+    // (@ablogcms/react-utils の render() がreact-dom/clientを使う。ブラウザでの実機確認で検出)。
+    // 末尾を$固定しない正規表現でサブパスも含めてマッチさせる。
+    alwaysBundle: [/^@ablogcms\//, /^react$/, /^react\//, /^react-dom$/, /^react-dom\//],
     // alwaysBundle対象のtransitive依存(classnames, focus-trap等)も連鎖して自動でバンドルされる
     // (この単一バンドルはnode_modulesの無いブラウザで読まれるため、それが望む挙動)。
     // onlyBundleは「バンドルを許可するパッケージ」を明示列挙する厳格モードで、意図せぬ肥大化を
