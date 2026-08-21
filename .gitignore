@@ -5,7 +5,7 @@
 
 # npm
 /node_modules/
-# src/dist/ is the webpack build output (admin.js). It is git-ignored but built via
+# src/dist/ is the tsdown build output (admin.js). It is git-ignored but built via
 # `npm run build` before packaging (scripts/package.php), so the release zip always has it.
 /src/dist/
 

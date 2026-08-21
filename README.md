@@ -67,6 +67,14 @@ vendor/bin/phpunit
 
 `ACMS_ROOT` を含む接続情報は `phpunit.xml`（git管理外のローカル上書き）で設定してください。テストデータは `Acms\TestingFramework\Seeder\*` を使います。
 
+管理画面UI(TypeScript/React)側は Vitest + Testing Library でテストします。ソースと同階層に `*.test.{ts,tsx}` を置きます。
+
+```bash
+npm install
+npm test          # Vitest(1回実行)
+npm run test:watch # Vitest(watchモード)
+```
+
 ## 品質チェック
 
 ```bash
@@ -76,6 +84,7 @@ composer test      # PHPUnit
 composer check     # 上記3つをまとめて実行
 
 npm run tsc        # TypeScript 型チェック
+npm test           # Vitest
 npm run build      # フロントエンドの本番ビルド(src/dist/admin.js を生成)
 ```
 
