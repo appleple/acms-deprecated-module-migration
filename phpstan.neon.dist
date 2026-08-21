@@ -1,0 +1,38 @@
+includes:
+    # Provided by ablogcms/testing-framework: stubs + constants for a-blog cms core symbols.
+    - vendor/ablogcms/testing-framework/phpstan/extension.neon
+    # phpstan/phpstan-strict-rules: opinionated checks layered on top of the level rules
+    # (strict comparisons, no loose booleans in conditions, no dynamic/variable calls, etc.).
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    # DB::query() の戻り値型は、testing-framework が提供するスタブでは呼び出しモード
+    # ('row'/'all'/'one'等) ごとの精度を持たず、常に mixed になる(a-blog cms本体を直接
+    # scanDirectoriesで解析した場合はモード別のオーバーロードで正しく絞られる、既知の
+    # スタブ側の精度差)。本体側のCMS-7826実装(a-blog cms本体リポジトリ)では同一コードが
+    # level 5 + strict-rulesでエラー0件だったことを確認済み。casts/is_array等での個別の
+    # 握り消しは行わず、既知パターンとしてbaselineへ退避する(本体のcomposer analyse:baseline
+    # と同じ方針)。
+    - phpstan-baseline.neon
+parameters:
+    level: max
+    # Production targets PHP 8.1 through 8.5; analyse across that range.
+    phpVersion:
+        min: 80100
+        max: 80500
+    paths:
+        - src
+        # Type-check the tests too. They rely on the base classes shipped by
+        # ablogcms/testing-framework (resolved via the extension include above).
+        - tests/phpunit
+    scanDirectories:
+        # a-blog cms core (needed to resolve core classes/functions). Adjust to your environment.
+        # With the bundled docker-compose.yml the core lives here:
+        - /var/www/html/php
+    ignoreErrors:
+        # strict-rules' staticMethod.dynamicCall fires on `$this->assertSame()` etc.: PHPUnit's
+        # assertions are static Assert methods, but PHPUnit itself recommends the dynamic `$this->`
+        # form, so this is idiomatic in tests (not a real smell). phpstan-phpunit only suppresses it
+        # under featureToggles.bleedingEdge, which flips many other defaults, so scope-ignore it in
+        # tests instead and keep the rule active for production src/.
+        -
+            identifier: staticMethod.dynamicCall
+            path: tests/phpunit/*

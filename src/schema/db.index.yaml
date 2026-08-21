@@ -1,0 +1,4 @@
+%{PREFIX}module_migration_snapshot:
+  - PRIMARY KEY (snapshot_id)
+  - KEY snapshot_module_id (snapshot_module_id, snapshot_blog_id)
+  - KEY snapshot_blog_id (snapshot_blog_id, snapshot_datetime)

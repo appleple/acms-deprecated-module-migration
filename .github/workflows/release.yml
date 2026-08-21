@@ -1,0 +1,54 @@
+name: Release
+
+# Build the plugin zip (scripts/package.php) and publish it as a GitHub Release.
+# Pushing a tag like v1.2.3 triggers this.
+#
+# The plugin version lives in src/ServiceProvider.php ($version). Keep the tag and that value in
+# sync — the "Verify" step below fails the run if they disagree, so no mismatched zip is published.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: zip
+          tools: composer
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify tag matches ServiceProvider $version
+        run: php scripts/package.php --check-version="${GITHUB_REF_NAME#v}"
+
+      - name: Build admin UI (src/dist/admin.js)
+        run: |
+          npm ci
+          npm run build
+
+      - name: Create release package
+        run: php scripts/package.php
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            ./build/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

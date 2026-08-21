@@ -1,0 +1,19 @@
+# Keep the GitHub Actions used by the workflows up to date. Patch and minor bumps are auto-merged
+# by .github/workflows/dependabot-auto-merge.yml once CI passes; major bumps are reviewed by hand.
+#
+# Composer is intentionally not tracked here: the dev-tool constraints are loose caret ranges, so
+# Dependabot could only ever propose major bumps — low value. ablogcms/testing-framework is
+# version-matched to the a-blog cms minor by hand anyway (see test.yml's matrix).
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"

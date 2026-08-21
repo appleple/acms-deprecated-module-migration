@@ -1,0 +1,7 @@
+%{PREFIX}module_migration_snapshot:
+  snapshot_id: {Field: snapshot_id, Type: bigint unsigned, 'Null': NO, Key: PRI, Default: , Extra: auto_increment}
+  snapshot_module_id: {Field: snapshot_module_id, Type: int(11), 'Null': NO, Key: MUL, Default: , Extra: }
+  snapshot_before_json: {Field: snapshot_before_json, Type: longtext, 'Null': NO, Key: , Default: , Extra: }
+  snapshot_datetime: {Field: snapshot_datetime, Type: datetime, 'Null': NO, Key: , Default: , Extra: }
+  snapshot_user_id: {Field: snapshot_user_id, Type: int(11), 'Null': NO, Key: , Default: , Extra: }
+  snapshot_blog_id: {Field: snapshot_blog_id, Type: int(11), 'Null': NO, Key: MUL, Default: , Extra: }

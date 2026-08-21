@@ -1,0 +1,295 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 3
+			path: src/ConfigCollection.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/MigrationDiffItem.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 3
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Method Acms\\Plugins\\DeprecatedModuleMigration\\ModuleMigrationManager\:\:applyWithSnapshot\(\) should return array\{result\: Acms\\Plugins\\DeprecatedModuleMigration\\MigrationResult, snapshotId\: int\} but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(mixed\)\: mixed\)\|null, Closure\(array\)\: Acms\\Plugins\\DeprecatedModuleMigration\\ModuleRow given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Parameter \#1 \$row of method Acms\\Plugins\\DeprecatedModuleMigration\\ModuleMigrationManager\:\:toModuleRow\(\) expects array\<string, mixed\>, array given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Parameter \#2 \$array of function array_map expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Parameter \#2 \$arrayResolver of class Acms\\Plugins\\DeprecatedModuleMigration\\ConfigCollection constructor expects \(callable\(string\)\: array\<int, mixed\>\)\|null, Closure\(string\)\: array given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Parameter \#2 \$def of method Field\:\:get\(\) expects int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Parameter \$scopeColumns of class Acms\\Plugins\\DeprecatedModuleMigration\\ModuleRow constructor expects array\<string, string\|null\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/ModuleMigrationManager.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: src/ModuleMigrationRepository.php
+
+		-
+			message: '#^Cannot access offset ''configs'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Cannot access offset ''module'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Cannot access offset ''snapshot_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 3
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Method Acms\\Plugins\\DeprecatedModuleMigration\\Snapshot\\ModuleSnapshotRepository\:\:fetchConfigRows\(\) should return list\<array\<string, mixed\>\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Method Acms\\Plugins\\DeprecatedModuleMigration\\Snapshot\\ModuleSnapshotRepository\:\:fetchModuleRow\(\) should return array\<string, mixed\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Method Acms\\Plugins\\DeprecatedModuleMigration\\Snapshot\\ModuleSnapshotRepository\:\:fetchSnapshot\(\) should return array\<string, mixed\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Parameter \#2 \$val of method SQL_Insert\:\:addInsert\(\) expects float\|int\|SQL_Field_Function\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 5
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Parameter \#2 \$val of method SQL_Update\:\:addUpdate\(\) expects float\|int\|SQL\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Parameter \#3 \$configRows of method Acms\\Plugins\\DeprecatedModuleMigration\\Snapshot\\ModuleSnapshotRepository\:\:restoreConfigRows\(\) expects list\<array\<string, mixed\>\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Parameter \#3 \$moduleData of method Acms\\Plugins\\DeprecatedModuleMigration\\Snapshot\\ModuleSnapshotRepository\:\:restoreModuleRow\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Snapshot/ModuleSnapshotRepository.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: src/Strategy/Banner/MediaHelperBannerImageMigrator.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Strategy/CategoryEntrySummaryMigrationStrategy.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Strategy/EntrySummaryMigrationStrategy.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 3
+			path: src/Strategy/MediaBannerMigrationStrategy.php
+
+		-
+			message: '#^Anonymous function should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/phpunit/Integration/ModuleMigrationRepositoryTest.php
+
+		-
+			message: '#^Cannot access offset ''module_cid_scope'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: tests/phpunit/Integration/ModuleMigrationRepositoryTest.php
+
+		-
+			message: '#^Cannot access offset ''module_uid_scope'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/phpunit/Integration/ModuleMigrationRepositoryTest.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: tests/phpunit/Integration/ModuleMigrationRepositoryTest.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 2
+			path: tests/phpunit/Integration/ModuleMigrationRepositoryTest.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(mixed\)\: mixed\)\|null, Closure\(array\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/phpunit/Integration/ModuleMigrationRepositoryTest.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/phpunit/Integration/ModuleMigrationRepositoryTest.php
+
+		-
+			message: '#^Parameter \#2 \$array of function array_map expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/phpunit/Integration/ModuleMigrationRepositoryTest.php
+
+		-
+			message: '#^Cannot access offset ''snapshot_blog_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/phpunit/Integration/Snapshot/ModuleSnapshotRepositoryTest.php
+
+		-
+			message: '#^Cannot access offset ''snapshot_module_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/phpunit/Integration/Snapshot/ModuleSnapshotRepositoryTest.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: tests/phpunit/Integration/Snapshot/ModuleSnapshotRepositoryTest.php
+
+		-
+			message: '#^Cannot access offset ''module_cid_scope'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/phpunit/Integration/Strategy/EntrySummaryMigrationStrategyTest.php
+
+		-
+			message: '#^Cannot access offset ''module_name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/phpunit/Integration/Strategy/EntrySummaryMigrationStrategyTest.php
+
+		-
+			message: '#^Anonymous function should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/phpunit/Integration/Strategy/MediaBannerMigrationStrategyTest.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(mixed\)\: mixed\)\|null, Closure\(array\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/phpunit/Integration/Strategy/MediaBannerMigrationStrategyTest.php
+
+		-
+			message: '#^Parameter \#2 \$array of function array_map expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/phpunit/Integration/Strategy/MediaBannerMigrationStrategyTest.php
+
+		-
+			message: '#^Cannot access offset ''targetConfigKey'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/phpunit/Unit/ModuleMigrationPresenterTest.php
+
+		-
+			message: '#^Cannot access offset ''willChangeIfUnset'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/phpunit/Unit/ModuleMigrationPresenterTest.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: tests/phpunit/Unit/ModuleMigrationPresenterTest.php
+
+		-
+			message: '#^Parameter \#2 \$haystack of method PHPUnit\\Framework\\Assert\:\:assertCount\(\) expects Countable\|iterable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/phpunit/Unit/ModuleMigrationPresenterTest.php
+
+		-
+			message: '#^Parameter \#2 \$haystack of method PHPUnit\\Framework\\Assert\:\:assertStringContainsString\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/phpunit/Unit/ModuleMigrationPresenterTest.php

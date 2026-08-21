@@ -1,0 +1,41 @@
+# Composer
+/vendor/
+# composer.lock is committed: plugins built from this repository are applications, so a locked,
+# reproducible dependency set is desirable (Composer's recommendation for project-type packages).
+
+# npm
+/node_modules/
+# src/dist/ is the webpack build output (admin.js). It is git-ignored but built via
+# `npm run build` before packaging (scripts/package.php), so the release zip always has it.
+/src/dist/
+
+# Release artifacts (scripts/package.php output)
+/build/
+
+# PHPUnit
+.phpunit.cache/
+.phpunit.result.cache
+/coverage/
+
+# Local config overrides + tool caches
+/phpcs.xml
+/phpstan.neon
+/phpunit.xml
+.phpstan.cache/
+
+# Environment
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# AI
+.claude/
+!.claude/skills
+.cursor/
+.codex/
+.gemini/
+*.local.md
