@@ -26,7 +26,7 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
 {
     public function migrate(int $blogId, string $relativePath, string $linkUrl): int
     {
-        if (!PublicStorage::isSafeRelativePath($relativePath)) {
+        if (!SafeRelativePath::isSafe($relativePath)) {
             throw new \RuntimeException("banner_img が不正なパスのため移行できません: {$relativePath}");
         }
         if ($blogId !== BID) {

@@ -6,7 +6,8 @@ services:
   acms:
     image: appleple/acms:${ACMS_IMAGE_TAG:-3.2-php8.5}
     ports:
-      - '8080:80'
+      # 開発ホストの8080番が別用途で使用中の場合は ACMS_HOST_PORT で上書きする。
+      - '${ACMS_HOST_PORT:-8080}:80'
     environment:
       ACMS_DB_HOST: db
       ACMS_DB_NAME: acms

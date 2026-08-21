@@ -15,7 +15,7 @@ final class PublicStorageBannerImageChecker implements BannerImageFileCheckerInt
 {
     public function exists(int $blogId, string $relativePath): bool
     {
-        if (!PublicStorage::isSafeRelativePath($relativePath)) {
+        if (!SafeRelativePath::isSafe($relativePath)) {
             return false;
         }
 
