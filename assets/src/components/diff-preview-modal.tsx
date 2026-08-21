@@ -1,6 +1,7 @@
 import Badge from '@ablogcms/components/badge';
 import Button from '@ablogcms/components/button';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '@ablogcms/components/modal';
+import { HStack } from '@ablogcms/components/stack';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ablogcms/components/table';
 import type { MigrationDiffResponse } from '../types';
 
@@ -34,7 +35,6 @@ function DiffPreviewModal({
   isApplying = false,
 }: DiffPreviewModalProps) {
   const diff = diffResult?.diff ?? null;
-  const templateReferences = diffResult?.templateReferences ?? [];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="large" isScrollable>
@@ -98,36 +98,23 @@ function DiffPreviewModal({
                 ))}
               </TableBody>
             </Table>
-
-            <div className="acms-admin-mt10">
-              <strong>テンプレート設置箇所(タグ名の書き換えが必要です)</strong>
-              {templateReferences.length === 0 ? (
-                <p>テンプレート設置箇所は検出されませんでした(検出不能な場合を含みます)</p>
-              ) : (
-                <ul>
-                  {templateReferences.map((reference) => (
-                    <li key={`${reference.filePath}:${reference.lineNumber}`}>
-                      {reference.filePath}:{reference.lineNumber}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </>
         )}
       </ModalBody>
       <ModalFooter>
-        <Button onClick={onClose} type="button">
-          閉じる
-        </Button>
-        <Button
-          onClick={onApply}
-          type="button"
-          variant="primary"
-          disabled={diff === null || diff.isBlocked || isApplying}
-        >
-          この内容で適用する
-        </Button>
+        <HStack display="inline-flex">
+          <Button onClick={onClose} type="button">
+            閉じる
+          </Button>
+          <Button
+            onClick={onApply}
+            type="button"
+            variant="primary"
+            disabled={diff === null || diff.isBlocked || isApplying}
+          >
+            この内容で適用する
+          </Button>
+        </HStack>
       </ModalFooter>
     </Modal>
   );

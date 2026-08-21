@@ -73,16 +73,4 @@ final class ModuleMigrationPresenter
             'notes' => $result->notes,
         ];
     }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function presentTemplateReference(TemplateReference $reference): array
-    {
-        return [
-            'filePath' => $reference->filePath,
-            'lineNumber' => $reference->lineNumber,
-            'matchedLine' => $reference->matchedLine,
-        ];
-    }
 }

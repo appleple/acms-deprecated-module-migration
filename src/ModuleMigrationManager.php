@@ -15,7 +15,7 @@ use SQL;
 
 /**
  * 非推奨モジュール自動移行機能の司令塔。対象moduleの検出・Strategyの解決・
- * 実効値解決済みConfigCollectionの構築・テンプレート参照検出を担う
+ * 実効値解決済みConfigCollectionの構築を担う
  * (detailed-design.html「1. アーキテクチャ・クラス設計」「9. 処理シーケンス」参照)。
  *
  * 検出・適用は module_blog_id(実際の所有ブログ)を基準に列挙する。global scope の
@@ -222,17 +222,6 @@ final class ModuleMigrationManager
                 'snapshot_id' => $snapshotId,
             ]);
         });
-    }
-
-    /**
-     * テーマ内のテンプレートを走査し、対象モジュールのBEGIN_MODULE設置箇所を検出する
-     * (読み取りのみ。書き換えは行わない)。
-     *
-     * @return TemplateReference[]
-     */
-    public function scanTemplateReferences(ModuleRow $module, string $themeDir): array
-    {
-        return (new TemplateReferenceScanner())->scan($themeDir, $module->moduleName, $module->moduleIdentifier);
     }
 
     private function requireStrategy(ModuleRow $module): MigrationStrategyInterface

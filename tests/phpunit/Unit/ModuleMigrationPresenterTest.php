@@ -8,7 +8,6 @@ use Acms\Plugins\DeprecatedModuleMigration\MigrationResult;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationPresenter;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleRow;
 use Acms\Plugins\DeprecatedModuleMigration\Strategy\ScheduleMigrationStrategy;
-use Acms\Plugins\DeprecatedModuleMigration\TemplateReference;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -88,18 +87,5 @@ class ModuleMigrationPresenterTest extends TestCase
         $this->assertSame('Schedule', $presented['newModuleName']);
         $this->assertSame(['k' => 'v'], $presented['writtenConfig']);
         $this->assertSame(['note'], $presented['notes']);
-    }
-
-    #[Test]
-    #[TestDox('presentTemplateReference()はファイルパス・行番号・一致行を含む配列を返す')]
-    public function presentTemplateReferenceIncludesLocationInfo(): void
-    {
-        $reference = new TemplateReference('/theme/index.html', 12, '<!-- BEGIN_MODULE Plugin_Schedule id="a" -->');
-
-        $result = $this->presenter->presentTemplateReference($reference);
-
-        $this->assertSame('/theme/index.html', $result['filePath']);
-        $this->assertSame(12, $result['lineNumber']);
-        $this->assertStringContainsString('Plugin_Schedule', $result['matchedLine']);
     }
 }

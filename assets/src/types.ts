@@ -27,12 +27,6 @@ export interface MigrationDiff {
   isBlocked: boolean;
 }
 
-export interface TemplateReferenceInfo {
-  filePath: string;
-  lineNumber: number;
-  matchedLine: string;
-}
-
 export interface MigrationResultInfo {
   moduleId: number;
   oldModuleName: string;
@@ -51,7 +45,6 @@ export interface MigrationDiffResponse {
   success: boolean;
   message?: string;
   diff: MigrationDiff;
-  templateReferences: TemplateReferenceInfo[];
 }
 
 export interface MigrationApplyResponse {

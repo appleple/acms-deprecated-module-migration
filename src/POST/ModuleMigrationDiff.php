@@ -6,17 +6,15 @@ use ACMS_POST;
 use Acms\Plugins\DeprecatedModuleMigration\HandlerTrait;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationManager;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationPresenter;
-use Acms\Plugins\DeprecatedModuleMigration\TemplateReference;
 use Acms\Services\Facades\Common;
 use Acms\Services\Facades\Module;
 
 /**
- * 対象モジュールの差分プレビューと、テンプレート参照検出結果を返すJSON API。
+ * 対象モジュールの差分プレビューを返すJSON API。
  *
  * フォームからは `name="ACMS_POST_ModuleMigrationDiff"` で呼び出す。
  *
  * @see \Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationManager::diff()
- * @see \Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationManager::scanTemplateReferences()
  */
 class ModuleMigrationDiff extends ACMS_POST
 {
@@ -34,16 +32,11 @@ class ModuleMigrationDiff extends ACMS_POST
             $manager = new ModuleMigrationManager();
             $module = $this->findTargetModule($manager, $blogId, $moduleId);
             $diff = $manager->diff($module);
-            $templateReferences = $this->findTemplateReferences($manager, $module, $blogId);
 
             $presenter = new ModuleMigrationPresenter();
             Common::responseJson([
                 'success' => true,
                 'diff' => $presenter->presentDiff($diff),
-                'templateReferences' => array_map(
-                    fn (TemplateReference $reference): array => $presenter->presentTemplateReference($reference),
-                    $templateReferences
-                ),
             ]);
         } catch (\Throwable $e) {
             Common::responseJson([
