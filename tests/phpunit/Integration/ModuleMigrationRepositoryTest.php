@@ -263,6 +263,47 @@ final class ModuleMigrationRepositoryTest extends DatabaseTestCase
         $this->assertSame([], $this->fetchOrderedConfigValues($this->blogId, $moduleId, 'media_banner_status'));
     }
 
+    #[Test]
+    #[TestDox('findRuleIdsWithConfig() はconfig_rule_idが設定された行のルールIDを重複なく返す')]
+    public function findRuleIdsWithConfigReturnsDistinctNonNullRuleIds(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Entry_Headline']);
+        // ルール無し(NULL)の行
+        ConfigSeeder::seed($this->blogId, 'entry_headline_limit', '5', ['config_module_id' => $moduleId]);
+        // ルール5で2キー(重複を除外できるか)、ルール7で1キー
+        ConfigSeeder::seed($this->blogId, 'entry_headline_limit', '10', ['config_module_id' => $moduleId, 'config_rule_id' => 5]);
+        ConfigSeeder::seed($this->blogId, 'entry_headline_order', 'asc', ['config_module_id' => $moduleId, 'config_rule_id' => 5]);
+        ConfigSeeder::seed($this->blogId, 'entry_headline_limit', '20', ['config_module_id' => $moduleId, 'config_rule_id' => 7]);
+
+        $ruleIds = $this->repository->findRuleIdsWithConfig($this->blogId, $moduleId);
+
+        sort($ruleIds);
+        $this->assertSame([5, 7], $ruleIds);
+    }
+
+    #[Test]
+    #[TestDox('findRuleIdsWithConfig() はルール別上書きが無い場合は空配列を返す')]
+    public function findRuleIdsWithConfigReturnsEmptyArrayWhenNoRuleScopedRows(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Entry_Headline']);
+        ConfigSeeder::seed($this->blogId, 'entry_headline_limit', '5', ['config_module_id' => $moduleId]);
+
+        $this->assertSame([], $this->repository->findRuleIdsWithConfig($this->blogId, $moduleId));
+    }
+
+    #[Test]
+    #[TestDox('findRuleIdsWithConfig() は他モジュール・他ブログのルール別上書きを含めない')]
+    public function findRuleIdsWithConfigScopesToModuleAndBlog(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Entry_Headline']);
+        $otherModuleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Entry_List']);
+        $otherBlogId = BlogSeeder::seed(['blog_name' => '別のブログ']);
+        ConfigSeeder::seed($this->blogId, 'entry_list_limit', '10', ['config_module_id' => $otherModuleId, 'config_rule_id' => 3]);
+        ConfigSeeder::seed($otherBlogId, 'entry_headline_limit', '10', ['config_module_id' => $moduleId, 'config_rule_id' => 4]);
+
+        $this->assertSame([], $this->repository->findRuleIdsWithConfig($this->blogId, $moduleId));
+    }
+
     /**
      * @return string[]
      */

@@ -51,4 +51,23 @@ final class ScheduleMigrationStrategyTest extends DatabaseTestCase
         $sql->addWhereOpr('module_id', $moduleId);
         $this->assertSame('Schedule', DB::query($sql->get(dsn()), 'one'));
     }
+
+    #[Test]
+    #[TestDox('applyForRule()は何もconfig行を書き込まない(configキー名が完全一致するため移行不要)')]
+    public function applyForRuleWritesNothing(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
+        $module = new ModuleRow($moduleId, 'mod_schedule', 'Plugin_Schedule', $this->blogId, 'local');
+        $configs = ConfigCollection::fromArray(['schedule_unit' => '9']);
+        $diff = $this->strategy->diff($module, $configs);
+
+        $this->strategy->applyForRule($module, $configs, $diff, 999);
+
+        $sql = SQL::newSelect('config');
+        $sql->addSelect('config_key');
+        $sql->addWhereOpr('config_module_id', $moduleId);
+        $sql->addWhereOpr('config_blog_id', $this->blogId);
+        $sql->addWhereOpr('config_rule_id', 999);
+        $this->assertSame([], DB::query($sql->get(dsn()), 'all'));
+    }
 }

@@ -65,6 +65,13 @@ final class ScheduleMigrationStrategy implements MigrationStrategyInterface
         );
     }
 
+    public function applyForRule(ModuleRow $module, ConfigCollection $configs, MigrationDiff $ruleDiff, int $ruleId): void
+    {
+        // Plugin_Schedule/Scheduleはconfigキー名が完全一致するためconfig行の書き込みが
+        // 発生しない(diff()が常に空items)。既存のルール別上書き行はconfig_key名が
+        // 変わらないため、apply()のリネームだけで新モジュール側でも引き続き有効になる。
+    }
+
     private function assertSupported(ModuleRow $module): void
     {
         if (!in_array($module->moduleName, $this->supports(), true)) {

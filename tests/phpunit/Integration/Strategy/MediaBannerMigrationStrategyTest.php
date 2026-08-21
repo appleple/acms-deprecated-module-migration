@@ -119,6 +119,53 @@ final class MediaBannerMigrationStrategyTest extends DatabaseTestCase
         $this->assertSame(['true', 'false'], $this->fetchOrderedConfigValues($moduleId, 'media_banner_status'));
     }
 
+    #[Test]
+    #[TestDox('applyForRule()は指定したconfig_rule_idの下にスロット値を書き込み、ルール無し(NULL)の行とは混在しない')]
+    public function applyForRuleWritesSlotsUnderGivenRuleIdOnly(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Banner']);
+        $module = new ModuleRow($moduleId, 'mod_banner', 'Banner', $this->blogId, 'local');
+        $ruleId = 999;
+        $configs = ConfigCollection::fromArrays([], [
+            'banner_status' => ['open'],
+            'banner_img' => ['banner/rule-specific.jpg'],
+            'banner_url' => ['https://rule.example.com'],
+        ]);
+
+        $fileChecker = new class implements BannerImageFileCheckerInterface {
+            public function exists(int $blogId, string $relativePath): bool
+            {
+                return true;
+            }
+        };
+        $imageMigrator = new class implements BannerImageMigratorInterface {
+            public function migrate(int $blogId, string $relativePath, string $linkUrl): int
+            {
+                return 888;
+            }
+        };
+        $strategy = new MediaBannerMigrationStrategy(new ModuleMigrationRepository(), $fileChecker, $imageMigrator);
+
+        $diff = $strategy->diff($module, $configs);
+        $strategy->applyForRule($module, $configs, $diff, $ruleId);
+
+        $ruleScoped = SQL::newSelect('config');
+        $ruleScoped->addSelect('config_value');
+        $ruleScoped->addWhereOpr('config_key', 'media_banner_mid');
+        $ruleScoped->addWhereOpr('config_module_id', $moduleId);
+        $ruleScoped->addWhereOpr('config_blog_id', $this->blogId);
+        $ruleScoped->addWhereOpr('config_rule_id', $ruleId);
+        $this->assertSame('888', DB::query($ruleScoped->get(dsn()), 'one'));
+
+        $noRule = SQL::newSelect('config');
+        $noRule->addSelect('config_key');
+        $noRule->addWhereOpr('config_key', 'media_banner_mid');
+        $noRule->addWhereOpr('config_module_id', $moduleId);
+        $noRule->addWhereOpr('config_blog_id', $this->blogId);
+        $noRule->addWhereOpr('config_rule_id', null);
+        $this->assertFalse(DB::query($noRule->get(dsn()), 'one'));
+    }
+
     /**
      * @return string[]
      */

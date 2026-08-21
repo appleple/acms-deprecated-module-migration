@@ -78,6 +78,15 @@ final class UserSearchAdvisoryStrategy implements MigrationStrategyInterface
         );
     }
 
+    public function applyForRule(ModuleRow $module, ConfigCollection $configs, MigrationDiff $ruleDiff, int $ruleId): void
+    {
+        // apply()自体が常に例外を投げるため、呼び出し元(ModuleMigrationManager)の
+        // ルール別移行ループへ到達することはない。interfaceの契約を明示するためだけに用意する。
+        throw new UnsupportedMigrationException(
+            'User_Profile → User_Search は自動適用に対応していません。手動で移行してください。'
+        );
+    }
+
     private function assertSupported(ModuleRow $module): void
     {
         if (!in_array($module->moduleName, $this->supports(), true)) {

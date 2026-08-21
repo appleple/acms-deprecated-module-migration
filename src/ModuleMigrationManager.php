@@ -121,8 +121,27 @@ final class ModuleMigrationManager
     public function diff(ModuleRow $module): MigrationDiff
     {
         $strategy = $this->requireStrategy($module);
+        $diff = $strategy->diff($module, $this->buildConfigCollection($module));
 
-        return $strategy->diff($module, $this->buildConfigCollection($module));
+        $ruleIds = $this->repository->findRuleIdsWithConfig($module->moduleBlogId, $module->moduleId);
+        if ($ruleIds === []) {
+            return $diff;
+        }
+
+        return new MigrationDiff(
+            sourceModuleName: $diff->sourceModuleName,
+            targetModuleName: $diff->targetModuleName,
+            items: $diff->items,
+            warnings: [
+                ...$diff->warnings,
+                sprintf(
+                    'この設定には %d 件のルール別上書き(URLパターン別設定)があります。'
+                        . '適用時にそれぞれ同じ変換ルールで移行されます。',
+                    count($ruleIds)
+                ),
+            ],
+            unsupportedReasons: $diff->unsupportedReasons
+        );
     }
 
     /**
@@ -156,7 +175,60 @@ final class ModuleMigrationManager
             ));
         }
 
-        return $strategy->apply($module, $this->buildConfigCollection($module), $approvedDiff);
+        $result = $strategy->apply($module, $this->buildConfigCollection($module), $approvedDiff);
+
+        return $this->applyToRuleScopedConfigs($module, $strategy, $result);
+    }
+
+    /**
+     * ベース(ルール無し)のapply()が完了した後、この module に対してルール単位で
+     * 上書きされているconfig行があれば、同じStrategyの変換ルールでそれぞれ移行する
+     * (buildConfigCollection()のdocblockに記載の既知の制約「ルール単位のコンフィグセットは
+     * 対象外」を解消する)。
+     *
+     * ルールごとに診断(diff)し直すのは、フィールドマッピングはmodule種別に対して一意だが、
+     * 実効値はルールごとに異なるため(detailed-design.html「2. 設計原則」参照)。
+     * あるルールの診断がisBlocked()になった場合はそのルールだけ書き込みをスキップし、
+     * その旨をMigrationResult::notesに追記する(1ルールの自動移行不可が、本体やほかの
+     * ルールの適用結果を損なわないようにするため)。
+     */
+    private function applyToRuleScopedConfigs(
+        ModuleRow $module,
+        MigrationStrategyInterface $strategy,
+        MigrationResult $result
+    ): MigrationResult {
+        $ruleIds = $this->repository->findRuleIdsWithConfig($module->moduleBlogId, $module->moduleId);
+        if ($ruleIds === []) {
+            return $result;
+        }
+
+        $additionalNotes = [];
+        foreach ($ruleIds as $ruleId) {
+            $ruleConfigs = $this->buildConfigCollection($module, $ruleId);
+            $ruleDiff = $strategy->diff($module, $ruleConfigs);
+            if ($ruleDiff->isBlocked()) {
+                $additionalNotes[] = sprintf(
+                    'ルールID %d の設定は自動移行できませんでした。手動で確認してください: %s',
+                    $ruleId,
+                    implode(' / ', $ruleDiff->unsupportedReasons)
+                );
+                continue;
+            }
+
+            $strategy->applyForRule($module, $ruleConfigs, $ruleDiff, $ruleId);
+        }
+
+        if ($additionalNotes === []) {
+            return $result;
+        }
+
+        return new MigrationResult(
+            moduleId: $result->moduleId,
+            oldModuleName: $result->oldModuleName,
+            newModuleName: $result->newModuleName,
+            writtenConfig: $result->writtenConfig,
+            notes: [...$result->notes, ...$additionalNotes]
+        );
     }
 
     /**
@@ -252,10 +324,15 @@ final class ModuleMigrationManager
      * (loadDefaultField() → loadBlogConfigSet() → loadModuleConfig())を
      * 「システム既定値 → ブログ/コンフィグセット単位の上書き → module単位の上書き」の順で
      * overloadすることで組み立てる(detailed-design.html「2. 設計原則: 実効値ベースの差分計算」参照)。
-     * ルール単位のコンフィグセットは対象外(既知の制約。ルール単位でしか上書きしていない
-     * 設定はこの解決に反映されないため、Strategy側で別途warningsとして検出する)。
+     *
+     * $ruleId を渡すと、そのルールでのみ上書きされた値も反映した実効値になる
+     * (Config::loadModuleConfig($mid, $rid)は内部でルール無し→指定ルールの順に自前で
+     * overloadするため、呼び出し側で二重にoverloadする必要はない。
+     * Services/Config/Helper::loadModuleConfig()の実装で確認済み)。diff()/apply()は
+     * ルール無し(既定)の実効値で判断し、ルール別上書きの移行はManagerが別途
+     * ルールごとにこのメソッドを呼び直して行う(applyToRuleScopedConfigs()参照)。
      */
-    private function buildConfigCollection(ModuleRow $module): ConfigCollection
+    private function buildConfigCollection(ModuleRow $module, ?int $ruleId = null): ConfigCollection
     {
         // システム既定値のみのFieldを別途保持し、ConfigCollectionのdefaultResolverとして渡す。
         // Strategy側の「未対応キーに非既定値が入っていたら警告する」判定(unmapped-key警告)は、
@@ -272,7 +349,7 @@ final class ModuleMigrationManager
         $defaultField = Config::loadDefaultField();
         $field = new \Field($defaultField);
         $field->overload(Config::loadBlogConfigSet($module->moduleBlogId));
-        $field->overload(Config::loadModuleConfig($module->moduleId));
+        $field->overload(Config::loadModuleConfig($module->moduleId, $ruleId));
 
         return new ConfigCollection(
             static fn (string $key, $default = null) => $field->get($key, $default),

@@ -2,6 +2,7 @@
 
 namespace Acms\Plugins\DeprecatedModuleMigration\Tests\Integration;
 
+use Acms\Services\Facades\Database as DB;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationManager;
 use Acms\TestingFramework\DatabaseTestCase;
 use Acms\TestingFramework\Seeder\BlogSeeder;
@@ -10,6 +11,7 @@ use Acms\TestingFramework\Seeder\ModuleSeeder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
+use SQL;
 
 /**
  * @see \Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationManager
@@ -180,6 +182,81 @@ final class ModuleMigrationManagerTest extends DatabaseTestCase
 
         $this->expectException(\RuntimeException::class);
         $this->manager->apply($module, $diff);
+    }
+
+    #[Test]
+    #[TestDox('diff()はconfig_rule_idが設定された行がある場合、ルール別上書きの件数を警告として付け加える')]
+    public function diffWarnsAboutRuleScopedOverrides(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Entry_Headline']);
+        ConfigSeeder::seed($this->blogId, 'entry_headline_limit', '10', ['config_module_id' => $moduleId, 'config_rule_id' => 5]);
+        ConfigSeeder::seed($this->blogId, 'entry_headline_limit', '20', ['config_module_id' => $moduleId, 'config_rule_id' => 7]);
+
+        $module = $this->manager->detect($this->blogId)[0];
+        $diff = $this->manager->diff($module);
+
+        $joined = implode(' / ', $diff->warnings);
+        $this->assertStringContainsString('2 件のルール別上書き', $joined);
+    }
+
+    #[Test]
+    #[TestDox('diff()はルール別上書きが無い場合、その警告を付け加えない')]
+    public function diffDoesNotWarnAboutRuleScopedOverridesWhenNoneExist(): void
+    {
+        ModuleSeeder::seed($this->blogId, [
+            'module_name' => 'Entry_Headline',
+            'module_uid_scope' => 'global',
+            'module_cid_scope' => 'global',
+            'module_eid_scope' => 'global',
+            'module_keyword_scope' => 'global',
+            'module_tag_scope' => 'global',
+            'module_field_scope' => 'global',
+            'module_start_scope' => 'global',
+            'module_end_scope' => 'global',
+            'module_page_scope' => 'global',
+            'module_order_scope' => 'global',
+        ]);
+
+        $module = $this->manager->detect($this->blogId)[0];
+        $diff = $this->manager->diff($module);
+
+        $this->assertSame([], $diff->warnings);
+    }
+
+    #[Test]
+    #[TestDox('apply()はルール別に上書きされたconfig行も、同じ変換ルールでそのルールIDのまま移行する')]
+    public function applyMigratesRuleScopedConfigOverridesToo(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, [
+            'module_name' => 'Entry_Headline',
+            'module_uid_scope' => 'global',
+            'module_cid_scope' => 'global',
+            'module_eid_scope' => 'global',
+            'module_keyword_scope' => 'global',
+            'module_tag_scope' => 'global',
+            'module_field_scope' => 'global',
+            'module_start_scope' => 'global',
+            'module_end_scope' => 'global',
+            'module_page_scope' => 'global',
+        ]);
+        // ルールID 5 だけ limit を 20 にしている(ベース(ルール無し)は既定値のまま)。
+        ConfigSeeder::seed($this->blogId, 'entry_headline_limit', '20', ['config_module_id' => $moduleId, 'config_rule_id' => 5]);
+
+        $module = $this->manager->detect($this->blogId)[0];
+        $diff = $this->manager->diff($module);
+        $this->manager->apply($module, $diff);
+
+        $sql = SQL::newSelect('config');
+        $sql->addSelect('config_value');
+        $sql->addWhereOpr('config_key', 'entry_summary_limit');
+        $sql->addWhereOpr('config_module_id', $moduleId);
+        $sql->addWhereOpr('config_blog_id', $this->blogId);
+        $sql->addWhereOpr('config_rule_id', 5);
+        $this->assertSame(
+            '20',
+            DB::query($sql->get(dsn()), 'one'),
+            'ルールID 5 の実効値(20)が entry_summary_limit として同じルールIDで移行されているはず'
+        );
     }
 
     #[Test]

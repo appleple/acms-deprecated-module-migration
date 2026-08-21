@@ -127,20 +127,7 @@ final class CategoryEntrySummaryMigrationStrategy implements MigrationStrategyIn
 
         $this->repository->renameModule($module->moduleId, $module->moduleBlogId, self::TARGET_MODULE_NAME);
 
-        $written = [];
-        foreach ($approvedDiff->itemsRequiringExplicitWrite() as $item) {
-            $value = $this->toStorableValue($item->sourceEffectiveValue);
-            $this->repository->upsertModuleConfig(
-                $module->moduleBlogId,
-                null,
-                $module->moduleId,
-                $item->targetConfigKey,
-                $value
-            );
-            $written[$item->targetConfigKey] = $value;
-        }
-
-        $this->repository->forgetModuleConfigCache($module->moduleBlogId, null, $module->moduleId);
+        $written = $this->writeConfigItems($module, null, $approvedDiff);
 
         return new MigrationResult(
             moduleId: $module->moduleId,
@@ -149,6 +136,40 @@ final class CategoryEntrySummaryMigrationStrategy implements MigrationStrategyIn
             writtenConfig: $written,
             notes: ['テンプレートの手動書き換えが必須です。']
         );
+    }
+
+    public function applyForRule(ModuleRow $module, ConfigCollection $configs, MigrationDiff $ruleDiff, int $ruleId): void
+    {
+        $this->assertSupported($module);
+
+        if ($ruleDiff->isBlocked()) {
+            return;
+        }
+
+        $this->writeConfigItems($module, $ruleId, $ruleDiff);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function writeConfigItems(ModuleRow $module, ?int $ruleId, MigrationDiff $diff): array
+    {
+        $written = [];
+        foreach ($diff->itemsRequiringExplicitWrite() as $item) {
+            $value = $this->toStorableValue($item->sourceEffectiveValue);
+            $this->repository->upsertModuleConfig(
+                $module->moduleBlogId,
+                $ruleId,
+                $module->moduleId,
+                $item->targetConfigKey,
+                $value
+            );
+            $written[$item->targetConfigKey] = $value;
+        }
+
+        $this->repository->forgetModuleConfigCache($module->moduleBlogId, $ruleId, $module->moduleId);
+
+        return $written;
     }
 
     /**

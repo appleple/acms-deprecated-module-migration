@@ -45,4 +45,19 @@ interface MigrationStrategyInterface
      * @throws UnsupportedMigrationException
      */
     public function apply(ModuleRow $module, ConfigCollection $configs, MigrationDiff $approvedDiff): MigrationResult;
+
+    /**
+     * apply()と同じフィールドマッピングで、他のルール(config_rule_id)にスコープされた
+     * config行を移行する。呼び出し元(ModuleMigrationManager)がルール別の実効値を
+     * 解決した $configs と、それに基づく $ruleDiff を渡す。
+     *
+     * module_nameのリネームはapply()側で既に完了している前提のため、ここでは行わない。
+     * $ruleDiff->isBlocked() が true の場合は何も書き込まず、呼び出し元にその旨を
+     * 委ねる(例外は投げない。1つのルールが自動移行不可でも他のルール・本体の適用結果を
+     * 損なわないようにするため)。
+     *
+     * config行を一切書き込まないStrategy(diff()が常に空items、または自動適用非対応)は
+     * 何もしなくてよい。
+     */
+    public function applyForRule(ModuleRow $module, ConfigCollection $configs, MigrationDiff $ruleDiff, int $ruleId): void;
 }

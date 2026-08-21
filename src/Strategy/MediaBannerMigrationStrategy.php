@@ -128,22 +128,7 @@ final class MediaBannerMigrationStrategy implements MigrationStrategyInterface
 
         $this->repository->renameModule($module->moduleId, $module->moduleBlogId, self::TARGET_MODULE_NAME);
 
-        $written = [];
-        foreach ($approvedDiff->itemsRequiringExplicitWrite() as $item) {
-            if (str_contains($item->targetConfigKey, '@')) {
-                continue;
-            }
-            $value = $this->toStorableValue($item->sourceEffectiveValue);
-            $this->repository->upsertModuleConfig($module->moduleBlogId, null, $module->moduleId, $item->targetConfigKey, $value);
-            $written[$item->targetConfigKey] = $value;
-        }
-
-        foreach ($this->buildSlotArrays($configs, $module->moduleBlogId) as $key => $values) {
-            $this->repository->replaceModuleConfigArray($module->moduleBlogId, null, $module->moduleId, $key, $values);
-            $written[$key] = $values;
-        }
-
-        $this->repository->forgetModuleConfigCache($module->moduleBlogId, null, $module->moduleId);
+        $written = $this->writeConfig($module, null, $configs, $approvedDiff);
 
         return new MigrationResult(
             moduleId: $module->moduleId,
@@ -152,6 +137,42 @@ final class MediaBannerMigrationStrategy implements MigrationStrategyInterface
             writtenConfig: $written,
             notes: $approvedDiff->warnings
         );
+    }
+
+    public function applyForRule(ModuleRow $module, ConfigCollection $configs, MigrationDiff $ruleDiff, int $ruleId): void
+    {
+        $this->assertSupported($module);
+
+        if ($ruleDiff->isBlocked()) {
+            return;
+        }
+
+        $this->writeConfig($module, $ruleId, $configs, $ruleDiff);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function writeConfig(ModuleRow $module, ?int $ruleId, ConfigCollection $configs, MigrationDiff $diff): array
+    {
+        $written = [];
+        foreach ($diff->itemsRequiringExplicitWrite() as $item) {
+            if (str_contains($item->targetConfigKey, '@')) {
+                continue;
+            }
+            $value = $this->toStorableValue($item->sourceEffectiveValue);
+            $this->repository->upsertModuleConfig($module->moduleBlogId, $ruleId, $module->moduleId, $item->targetConfigKey, $value);
+            $written[$item->targetConfigKey] = $value;
+        }
+
+        foreach ($this->buildSlotArrays($configs, $module->moduleBlogId) as $key => $values) {
+            $this->repository->replaceModuleConfigArray($module->moduleBlogId, $ruleId, $module->moduleId, $key, $values);
+            $written[$key] = $values;
+        }
+
+        $this->repository->forgetModuleConfigCache($module->moduleBlogId, $ruleId, $module->moduleId);
+
+        return $written;
     }
 
     /**

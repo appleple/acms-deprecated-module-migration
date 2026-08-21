@@ -74,6 +74,30 @@ final class ModuleMigrationRepository
         $this->execOrFail($sql->get(dsn()), 'URLパラメータscopeの更新に失敗しました。');
     }
 
+    /**
+     * 対象moduleに対して、config_rule_idが設定された(ルール単位で上書きされた)行が
+     * 存在するルールIDの一覧を、重複なく返す。
+     *
+     * ルール別上書きの検出に使う(detailed-design.htmlに記載の既知の制約「ルール単位の
+     * コンフィグセットは対象外」を解消するための追加。ModuleMigrationManager::apply()が
+     * ここで返った各ルールIDに対しても同じフィールドマッピングでconfig行を移行する)。
+     *
+     * @return int[]
+     */
+    public function findRuleIdsWithConfig(int $blogId, int $moduleId): array
+    {
+        $sql = SQL::newSelect('config');
+        $sql->addSelect('config_rule_id');
+        $sql->addWhereOpr('config_module_id', $moduleId);
+        $sql->addWhereOpr('config_blog_id', $blogId);
+        $sql->addWhereOpr('config_rule_id', null, '<>');
+        $sql->setGroup('config_rule_id');
+
+        $rows = DB::query($sql->get(dsn()), 'all');
+
+        return array_map(static fn (array $row): int => (int) $row['config_rule_id'], $rows);
+    }
+
     public function upsertModuleConfig(int $blogId, ?int $ruleId, int $moduleId, string $key, string $value): void
     {
         if ($this->configRowExists($blogId, $ruleId, $moduleId, $key)) {
