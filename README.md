@@ -1,19 +1,19 @@
-# DeprecatedModuleMigration for a-blog cms
+# DeprecatedModuleMigration
 
-非推奨モジュールから代替モジュールへの設定移行を支援する **a-blog cms** の拡張アプリです。
+非推奨モジュールから代替モジュールへの設定移行を支援する **a-blog cms** のプラグインです。
 `acms-plugin-skeleton` をベースに、`ablogcms/testing-framework` によるテスト環境と CI/CD 一式を備えています。
 
 ## できること
 
 対象ブログの `module` テーブルを走査し、以下の非推奨モジュールを検出して代替モジュールへの設定移行を支援します。
 
-| 非推奨モジュール | 代替モジュール | 移行方式 |
-|---|---|---|
-| `Plugin_Schedule` | `Schedule` | 設定値をそのまま1:1移行(A) |
-| `Entry_Headline` / `Entry_List` / `Entry_Photo` | `Entry_Summary` | 設定値を対応キーへ変換(B) |
-| `Category_EntryList` | `Category_EntrySummary` | 設定値を対応キーへ変換(B) |
-| `Banner` | `Media_Banner` | バナー画像をメディアライブラリへ移設(C・オプトイン) |
-| `User_Profile` | `User_Search` | 自動移行不可。差分確認と手動対応の助言のみ(C) |
+| 非推奨モジュール                                | 代替モジュール          | 移行方式                                            |
+| ----------------------------------------------- | ----------------------- | --------------------------------------------------- |
+| `Plugin_Schedule`                               | `Schedule`              | 設定値をそのまま1:1移行(A)                          |
+| `Entry_Headline` / `Entry_List` / `Entry_Photo` | `Entry_Summary`         | 設定値を対応キーへ変換(B)                           |
+| `Category_EntryList`                            | `Category_EntrySummary` | 設定値を対応キーへ変換(B)                           |
+| `Banner`                                        | `Media_Banner`          | バナー画像をメディアライブラリへ移設(C・オプトイン) |
+| `User_Profile`                                  | `User_Search`           | 自動移行不可。差分確認と手動対応の助言のみ(C)       |
 
 管理画面（サイドバー「DeprecatedModuleMigration」）から、ブログ単位で
 
@@ -22,13 +22,13 @@
 3. **適用** — 移行前の `module` / `config` 行をスナップショットとして保存した上で書き換え
 4. **ロールバック** — スナップショットから適用前の状態に復元
 
-という流れで進められます。React 製の管理画面 UI は `@ablogcms/*`（[npmjs.com/org/ablogcms](https://www.npmjs.com/org/ablogcms)）の公開パッケージを利用しています。
+という流れで進められます。
 
 ルール（URLパターン別の設定上書き）で個別に上書きされている設定がある場合、差分確認画面にその件数が警告として表示されます。適用時は、ルール無し(既定)の設定と同じ変換ルールで、各ルールの設定もそれぞれのルールIDのまま移行されます（自動移行不可と判定されたルールがあれば、その分だけ適用結果に手動確認が必要な旨を表示します）。
 
 ## 動作環境
 
-- a-blog cms: Ver. 3.2.27 以降 (3.3+ not tested yet)
+- a-blog cms: Ver. 3.2.29 以降 (3.3+ not tested yet)
 - PHP: 8.1 – 8.5 (8.6+ not tested yet)
 
 ## ダウンロード

@@ -46,7 +46,7 @@ class ServiceProvider extends ACMS_App
     /**
      * @var string
      */
-    public $desc = '非推奨モジュール(Plugin_Schedule/Entry_Headline/Entry_List/Entry_Photo/Category_EntryList/Banner/User_Profile)から代替モジュールへの設定移行を支援する拡張アプリです。';
+    public $desc = '非推奨モジュール(Plugin_Schedule/Entry_Headline/Entry_List/Entry_Photo/Category_EntryList/Banner/User_Profile)から代替モジュールへの設定移行を支援するプラグインです。';
 
     /**
      * プラグインの初期処理(有効な全リクエストで実行される)。
