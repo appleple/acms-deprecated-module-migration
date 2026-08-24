@@ -29,24 +29,26 @@ function makeDiffResult(overrides: Partial<MigrationDiffResponse['diff']> = {}):
 
 describe('DiffPreviewModal', () => {
   it('isOpenがfalseの場合は何も表示しない', () => {
-    render(
-      <DiffPreviewModal isOpen={false} onClose={vi.fn()} diffResult={null} onApply={vi.fn()} />
-    );
+    render(<DiffPreviewModal isOpen={false} onClose={vi.fn()} diffResult={null} onApply={vi.fn()} />);
 
     expect(screen.queryByText('差分プレビュー')).not.toBeInTheDocument();
   });
 
   it('読み込み中は読み込み中メッセージを表示する', () => {
-    render(
-      <DiffPreviewModal isOpen onClose={vi.fn()} diffResult={null} isLoading onApply={vi.fn()} />
-    );
+    render(<DiffPreviewModal isOpen onClose={vi.fn()} diffResult={null} isLoading onApply={vi.fn()} />);
 
     expect(screen.getByText('読み込み中です')).toBeInTheDocument();
   });
 
   it('エラー時はalertロールでメッセージを表示し、差分テーブルは表示しない', () => {
     render(
-      <DiffPreviewModal isOpen onClose={vi.fn()} diffResult={null} error="対象モジュールが見つかりません。" onApply={vi.fn()} />
+      <DiffPreviewModal
+        isOpen
+        onClose={vi.fn()}
+        diffResult={null}
+        error="対象モジュールが見つかりません。"
+        onApply={vi.fn()}
+      />
     );
 
     expect(screen.getByRole('alert')).toHaveTextContent('対象モジュールが見つかりません。');
@@ -54,9 +56,7 @@ describe('DiffPreviewModal', () => {
   });
 
   it('差分結果がある場合、移行元→移行先と設定キー一覧を表示する', () => {
-    render(
-      <DiffPreviewModal isOpen onClose={vi.fn()} diffResult={makeDiffResult()} onApply={vi.fn()} />
-    );
+    render(<DiffPreviewModal isOpen onClose={vi.fn()} diffResult={makeDiffResult()} onApply={vi.fn()} />);
 
     expect(screen.getByText(/Plugin_Schedule/)).toBeInTheDocument();
     expect(screen.getByText(/Schedule/)).toBeInTheDocument();
@@ -89,9 +89,7 @@ describe('DiffPreviewModal', () => {
   });
 
   it('isApplying:trueの場合、適用ボタンは無効化される', () => {
-    render(
-      <DiffPreviewModal isOpen onClose={vi.fn()} diffResult={makeDiffResult()} onApply={vi.fn()} isApplying />
-    );
+    render(<DiffPreviewModal isOpen onClose={vi.fn()} diffResult={makeDiffResult()} onApply={vi.fn()} isApplying />);
 
     expect(screen.getByRole('button', { name: 'この内容で適用する' })).toBeDisabled();
   });

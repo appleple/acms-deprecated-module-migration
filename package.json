@@ -1,7 +1,7 @@
 {
   "name": "acms-deprecated-module-migration",
   "version": "1.0.0",
-  "description": "非推奨モジュールから代替モジュールへの設定移行を支援するa-blog cms拡張アプリの管理画面UI",
+  "description": "非推奨モジュールから代替モジュールへの設定移行を支援するa-blog cmsプラグインの管理画面UI",
   "private": true,
   "type": "module",
   "engines": {
@@ -12,8 +12,11 @@
     "postbuild": "node scripts/check-bundle.mjs",
     "dev": "tsdown --watch",
     "tsc": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
@@ -30,15 +33,40 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@ablogcms/dialog": "^3.2.28-beta.0",
+    "@eslint/compat": "^2.1.0",
+    "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.5",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.11.0",
+    "husky": "^9.1.7",
     "jsdom": "^30.0.1",
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.9.6",
     "tsdown": "^0.22.14",
     "typescript": "~6.0.3",
+    "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.11"
+  },
+  "lint-staged": {
+    "assets/src/**/*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{js,mjs,cjs,json,md}": [
+      "prettier --write"
+    ]
+  },
+  "overrides": {
+    "eslint-plugin-react": {
+      "eslint": "$eslint"
+    }
   }
 }

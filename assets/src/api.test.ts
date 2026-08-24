@@ -49,7 +49,14 @@ describe('fetchDiff', () => {
     mockedPost.mockReturnValue(
       respond({
         success: true,
-        diff: { sourceModuleName: 'A', targetModuleName: 'B', items: [], warnings: [], unsupportedReasons: [], isBlocked: false },
+        diff: {
+          sourceModuleName: 'A',
+          targetModuleName: 'B',
+          items: [],
+          warnings: [],
+          unsupportedReasons: [],
+          isBlocked: false,
+        },
       })
     );
 
@@ -65,7 +72,11 @@ describe('fetchDiff', () => {
 describe('applyMigration', () => {
   it('optInを省略した場合は"0"として送信する', async () => {
     mockedPost.mockReturnValue(
-      respond({ success: true, result: { moduleId: 1, oldModuleName: 'A', newModuleName: 'B', writtenConfig: {}, notes: [] }, snapshotId: 1 })
+      respond({
+        success: true,
+        result: { moduleId: 1, oldModuleName: 'A', newModuleName: 'B', writtenConfig: {}, notes: [] },
+        snapshotId: 1,
+      })
     );
 
     await applyMigration(1, 2);
@@ -76,7 +87,11 @@ describe('applyMigration', () => {
 
   it('optIn:trueを渡した場合は"1"として送信する', async () => {
     mockedPost.mockReturnValue(
-      respond({ success: true, result: { moduleId: 1, oldModuleName: 'A', newModuleName: 'B', writtenConfig: {}, notes: [] }, snapshotId: 1 })
+      respond({
+        success: true,
+        result: { moduleId: 1, oldModuleName: 'A', newModuleName: 'B', writtenConfig: {}, notes: [] },
+        snapshotId: 1,
+      })
     );
 
     await applyMigration(1, 2, true);

@@ -143,11 +143,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
                   <Badge variant={rankBadgeVariant(candidate.rank)}>{rankLabel(candidate.rank)}</Badge>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    onClick={() => handleShowDiff(candidate)}
-                    type="button"
-                    disabled={candidate.rank === null}
-                  >
+                  <Button onClick={() => handleShowDiff(candidate)} type="button" disabled={candidate.rank === null}>
                     差分を確認
                   </Button>
                 </TableCell>

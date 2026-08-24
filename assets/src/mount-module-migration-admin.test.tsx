@@ -59,7 +59,13 @@ describe('mountModuleMigrationAdminFromAttributes', () => {
     mockedConfirm.mockResolvedValue(true);
     mockedApply.mockResolvedValue({
       success: true,
-      result: { moduleId: 1, oldModuleName: 'Plugin_Schedule', newModuleName: 'Schedule', writtenConfig: {}, notes: [] },
+      result: {
+        moduleId: 1,
+        oldModuleName: 'Plugin_Schedule',
+        newModuleName: 'Schedule',
+        writtenConfig: {},
+        notes: [],
+      },
       snapshotId: 10,
     });
 
