@@ -3,20 +3,23 @@
 namespace Acms\Plugins\DeprecatedModuleMigration\Strategy\Banner;
 
 use Acms\Services\Facades\Database as DB;
+use Acms\Services\Facades\LocalStorage;
+use Acms\Services\Facades\Media;
 use Acms\Services\Facades\PublicStorage;
-use Acms\Services\Media\Helper as MediaHelper;
 use SQL;
 
 /**
  * banner_img(ファイルパス文字列)を、既存のメディア登録経路
- * (Acms\Services\Media\Helper::storeImage() / insertMedia())を通じて
- * Media_Bannerのメディアレコードへ実データ移行する。
+ * (Media::storeImage() / Media::insertMedia())を通じてMedia_Bannerのメディアレコードへ
+ * 実データ移行する。
  *
  * 独自にmediaテーブルへ直接INSERTすると必須カラムの欠落・不整合のリスクが高いため、
  * 既存の画像最適化・サムネイル生成ロジックをそのまま再利用する
- * (detailed-design.html「画像移行バッチの処理フロー」参照)。
+ * (detailed-design.html「画像移行バッチの処理フロー」参照)。Mediaファサードは
+ * DIコンテナが保持するシングルトンを解決するため、`new Media\Helper()` で直接
+ * インスタンス化せずファサード経由で呼ぶ(本体のサービス層規約と同じ)。
  *
- * 既知の制約: Media\Helper::insertMedia() は media_blog_id にグローバル定数 BID
+ * 既知の制約: Media::insertMedia() は media_blog_id にグローバル定数 BID
  * (現在のリクエストコンテキストのブログ)をそのまま使う実装になっており、移行対象の
  * $blogId を明示的に指定する経路が無い。グローバル定数を書き換えるのは副作用が大きく
  * 安全でないため、$blogId が現在の管理画面コンテキスト(BID)と一致しない場合は
@@ -47,12 +50,11 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
             if ($contents === false) {
                 throw new \RuntimeException("banner_img の読み込みに失敗しました: {$relativePath}");
             }
-            file_put_contents($tmpFile, $contents);
+            LocalStorage::put($tmpFile, $contents);
 
-            $mediaHelper = new MediaHelper();
-            $stored = $mediaHelper->storeImage($tmpFile, basename($relativePath));
+            $stored = Media::storeImage($tmpFile, LocalStorage::mbBasename($relativePath));
 
-            $mediaHelper->insertMedia($mediaId, [
+            Media::insertMedia($mediaId, [
                 'type' => 'image',
                 'extension' => $stored['type'],
                 'path' => $stored['path'],
@@ -62,9 +64,7 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
                 'field_2' => $linkUrl,
             ]);
         } finally {
-            if (file_exists($tmpFile)) {
-                unlink($tmpFile);
-            }
+            LocalStorage::remove($tmpFile);
         }
 
         return $mediaId;
