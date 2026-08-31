@@ -1,6 +1,6 @@
 import { fetchClient } from '@ablogcms/fetch-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { applyMigration, detectModules, fetchDiff, rollbackMigration } from './api';
+import { applyMigration, detectModules, fetchDiff, fetchSnapshots, rollbackMigration } from './api';
 import type { FetchResponse } from '@ablogcms/fetch-client';
 
 vi.mock('@ablogcms/fetch-client', () => ({
@@ -111,5 +111,24 @@ describe('rollbackMigration', () => {
     expect(params.get('ACMS_POST_ModuleMigrationRollback')).toBe('post');
     expect(params.get('blogId')).toBe('3');
     expect(params.get('snapshotId')).toBe('7');
+  });
+});
+
+describe('fetchSnapshots', () => {
+  it('blogIdをパラメータに含めてPOSTし、成功時はレスポンスをそのまま返す', async () => {
+    mockedPost.mockReturnValue(respond({ success: true, snapshots: [] }));
+
+    const result = await fetchSnapshots(5);
+
+    expect(result).toEqual({ success: true, snapshots: [] });
+    const [, params] = mockedPost.mock.calls[0] as [string, URLSearchParams];
+    expect(params.get('ACMS_POST_ModuleMigrationSnapshots')).toBe('post');
+    expect(params.get('blogId')).toBe('5');
+  });
+
+  it('success:falseの場合、messageをそのままエラーにして投げる', async () => {
+    mockedPost.mockReturnValue(respond({ success: false, message: '権限がありません。', snapshots: [] }));
+
+    await expect(fetchSnapshots(1)).rejects.toThrow('権限がありません。');
   });
 });

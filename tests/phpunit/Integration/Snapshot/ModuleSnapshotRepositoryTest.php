@@ -5,6 +5,7 @@ namespace Acms\Plugins\DeprecatedModuleMigration\Tests\Integration\Snapshot;
 use Acms\Services\Facades\Database as DB;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleRow;
 use Acms\Plugins\DeprecatedModuleMigration\Snapshot\ModuleSnapshotRepository;
+use Acms\Plugins\DeprecatedModuleMigration\Snapshot\SnapshotSummary;
 use Acms\TestingFramework\DatabaseTestCase;
 use Acms\TestingFramework\Seeder\BlogSeeder;
 use Acms\TestingFramework\Seeder\ConfigSeeder;
@@ -139,5 +140,49 @@ final class ModuleSnapshotRepositoryTest extends DatabaseTestCase
         $rows = DB::query($configSql->get(dsn()), 'all');
 
         $this->assertSame([], $rows);
+    }
+
+    #[Test]
+    #[TestDox('findAllByBlogId()は指定ブログのスナップショットを新しい順に返し、moduleNameはスナップショット時点の値を返す')]
+    public function findAllByBlogIdReturnsSnapshotsForBlogInDescendingOrder(): void
+    {
+        $moduleId1 = ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
+        $module1 = new ModuleRow($moduleId1, 'mod_schedule', 'Plugin_Schedule', $this->blogId, 'local');
+        $snapshotId1 = $this->repository->save($module1, userId: 1);
+
+        $moduleId2 = ModuleSeeder::seed($this->blogId, ['module_name' => 'Entry_Headline']);
+        $module2 = new ModuleRow($moduleId2, 'mod_headline', 'Entry_Headline', $this->blogId, 'local');
+        $snapshotId2 = $this->repository->save($module2, userId: 2);
+
+        $summaries = $this->repository->findAllByBlogId($this->blogId);
+
+        $this->assertCount(2, $summaries);
+        $this->assertContainsOnlyInstancesOf(SnapshotSummary::class, $summaries);
+
+        // 新しい順(直近に保存したsnapshotId2が先頭)
+        $this->assertSame($snapshotId2, $summaries[0]->snapshotId);
+        $this->assertSame($moduleId2, $summaries[0]->moduleId);
+        $this->assertSame('Entry_Headline', $summaries[0]->moduleName);
+        $this->assertSame(2, $summaries[0]->userId);
+
+        $this->assertSame($snapshotId1, $summaries[1]->snapshotId);
+        $this->assertSame($moduleId1, $summaries[1]->moduleId);
+        $this->assertSame('Plugin_Schedule', $summaries[1]->moduleName);
+        $this->assertSame(1, $summaries[1]->userId);
+    }
+
+    #[Test]
+    #[TestDox('findAllByBlogId()は他ブログのスナップショットを含まない')]
+    public function findAllByBlogIdExcludesOtherBlogs(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
+        $module = new ModuleRow($moduleId, 'mod_schedule', 'Plugin_Schedule', $this->blogId, 'local');
+        $this->repository->save($module, userId: 1);
+
+        $otherBlogId = BlogSeeder::seed(['blog_name' => '別ブログ']);
+
+        $summaries = $this->repository->findAllByBlogId($otherBlogId);
+
+        $this->assertSame([], $summaries);
     }
 }

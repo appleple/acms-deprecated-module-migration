@@ -1,13 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useMigrationHistory } from '../hooks/use-migration-history';
 import { useModuleMigration } from '../hooks/use-module-migration';
 import type { MigrationApplyResponse, MigrationDiffResponse, ModuleMigrationCandidate } from '../types';
 import ModuleMigrationAdmin from './module-migration-admin';
 
 vi.mock('../hooks/use-module-migration');
+vi.mock('../hooks/use-migration-history');
 
 const mockedUseModuleMigration = vi.mocked(useModuleMigration);
+const mockedUseMigrationHistory = vi.mocked(useMigrationHistory);
 // window.ACMS.Library.dialog は vitest.setup.ts でモック済み(@ablogcms/dialogは
 // バンドルせず本体が公開する共有インスタンスを呼ぶ。mount-module-migration-admin.tsx参照)。
 const mockedConfirm = vi.mocked(window.ACMS.Library.dialog.confirm);
@@ -72,6 +75,14 @@ function makeHookState(overrides: Partial<HookReturn> = {}): HookReturn {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockedUseMigrationHistory.mockReturnValue({
+    snapshots: [],
+    isLoading: false,
+    error: null,
+    isRollingBack: false,
+    loadSnapshots: vi.fn(),
+    rollback: vi.fn(),
+  });
 });
 
 describe('ModuleMigrationAdmin', () => {
@@ -225,6 +236,21 @@ describe('ModuleMigrationAdmin', () => {
 
       await waitFor(() => expect(mockedConfirm).toHaveBeenCalledTimes(1));
       expect(apply).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('移行履歴', () => {
+    it('移行履歴セクションを表示し、そこでのロールバック成功時にモジュール一覧を再取得する', () => {
+      const loadModules = vi.fn();
+      mockedUseModuleMigration.mockReturnValue(makeHookState({ loadModules }));
+
+      render(<ModuleMigrationAdmin blogId={1} />);
+
+      expect(screen.getByText('移行履歴')).toBeInTheDocument();
+      const { onRollbackSuccess } = mockedUseMigrationHistory.mock.calls[0][1] ?? {};
+      onRollbackSuccess?.();
+
+      expect(loadModules).toHaveBeenCalledTimes(2);
     });
   });
 });

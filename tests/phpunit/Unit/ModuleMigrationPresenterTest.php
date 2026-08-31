@@ -7,6 +7,7 @@ use Acms\Plugins\DeprecatedModuleMigration\MigrationDiffItem;
 use Acms\Plugins\DeprecatedModuleMigration\MigrationResult;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationPresenter;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleRow;
+use Acms\Plugins\DeprecatedModuleMigration\Snapshot\SnapshotSummary;
 use Acms\Plugins\DeprecatedModuleMigration\Strategy\ScheduleMigrationStrategy;
 use Acms\TestingFramework\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -87,5 +88,26 @@ class ModuleMigrationPresenterTest extends TestCase
         $this->assertSame('Schedule', $presented['newModuleName']);
         $this->assertSame(['k' => 'v'], $presented['writtenConfig']);
         $this->assertSame(['note'], $presented['notes']);
+    }
+
+    #[Test]
+    #[TestDox('presentSnapshot()はスナップショット要約の全フィールドを含む配列を返す')]
+    public function presentSnapshotIncludesAllFields(): void
+    {
+        $summary = new SnapshotSummary(
+            snapshotId: 3,
+            moduleId: 10,
+            moduleName: 'Plugin_Schedule',
+            snapshotDatetime: '2026-08-30 12:00:00',
+            userId: 1
+        );
+
+        $result = $this->presenter->presentSnapshot($summary);
+
+        $this->assertSame(3, $result['snapshotId']);
+        $this->assertSame(10, $result['moduleId']);
+        $this->assertSame('Plugin_Schedule', $result['moduleName']);
+        $this->assertSame('2026-08-30 12:00:00', $result['snapshotDatetime']);
+        $this->assertSame(1, $result['userId']);
     }
 }

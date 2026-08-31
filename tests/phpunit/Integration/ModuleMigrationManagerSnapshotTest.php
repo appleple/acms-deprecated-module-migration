@@ -63,4 +63,21 @@ final class ModuleMigrationManagerSnapshotTest extends DatabaseTestCase
         $this->expectException(\RuntimeException::class);
         $this->manager->rollback($outcome['snapshotId'], $otherBlogId);
     }
+
+    #[Test]
+    #[TestDox('listSnapshots()はapplyWithSnapshot()で保存されたスナップショットを新しい順に返す')]
+    public function listSnapshotsReturnsSnapshotsSavedByApplyWithSnapshot(): void
+    {
+        ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
+        $module = $this->manager->detect($this->blogId)[0];
+        $diff = $this->manager->diff($module);
+
+        $outcome = $this->manager->applyWithSnapshot($module, $diff, userId: 1);
+
+        $summaries = $this->manager->listSnapshots($this->blogId);
+
+        $this->assertCount(1, $summaries);
+        $this->assertSame($outcome['snapshotId'], $summaries[0]->snapshotId);
+        $this->assertSame('Plugin_Schedule', $summaries[0]->moduleName);
+    }
 }

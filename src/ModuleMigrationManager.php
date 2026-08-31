@@ -296,6 +296,16 @@ final class ModuleMigrationManager
         });
     }
 
+    /**
+     * 対象ブログが所有するスナップショットを新しい順に列挙する(移行履歴一覧画面向け)。
+     *
+     * @return \Acms\Plugins\DeprecatedModuleMigration\Snapshot\SnapshotSummary[]
+     */
+    public function listSnapshots(int $blogId): array
+    {
+        return $this->snapshotRepository->findAllByBlogId($blogId);
+    }
+
     private function requireStrategy(ModuleRow $module): MigrationStrategyInterface
     {
         $strategy = $this->resolveStrategy($module->moduleName);

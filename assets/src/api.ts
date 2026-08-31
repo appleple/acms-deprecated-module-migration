@@ -4,6 +4,7 @@ import type {
   MigrationApplyResponse,
   MigrationDiffResponse,
   MigrationRollbackResponse,
+  MigrationSnapshotsResponse,
 } from './types';
 
 function buildParams(handlerName: string, fields: Record<string, string | number>): URLSearchParams {
@@ -50,4 +51,8 @@ export function applyMigration(
 
 export function rollbackMigration(blogId: number, snapshotId: number): Promise<MigrationRollbackResponse> {
   return postAcms<MigrationRollbackResponse>('ACMS_POST_ModuleMigrationRollback', { blogId, snapshotId });
+}
+
+export function fetchSnapshots(blogId: number): Promise<MigrationSnapshotsResponse> {
+  return postAcms<MigrationSnapshotsResponse>('ACMS_POST_ModuleMigrationSnapshots', { blogId });
 }

@@ -2,6 +2,8 @@
 
 namespace Acms\Plugins\DeprecatedModuleMigration;
 
+use Acms\Plugins\DeprecatedModuleMigration\Snapshot\SnapshotSummary;
+
 /**
  * ModuleMigration の値オブジェクトを、管理画面React UIへ返すJSON化可能な配列へ変換する。
  *
@@ -71,6 +73,20 @@ final class ModuleMigrationPresenter
             'newModuleName' => $result->newModuleName,
             'writtenConfig' => $result->writtenConfig,
             'notes' => $result->notes,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function presentSnapshot(SnapshotSummary $summary): array
+    {
+        return [
+            'snapshotId' => $summary->snapshotId,
+            'moduleId' => $summary->moduleId,
+            'moduleName' => $summary->moduleName,
+            'snapshotDatetime' => $summary->snapshotDatetime,
+            'userId' => $summary->userId,
         ];
     }
 }

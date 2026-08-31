@@ -58,3 +58,17 @@ export interface MigrationRollbackResponse {
   success: boolean;
   message?: string;
 }
+
+export interface SnapshotSummary {
+  snapshotId: number;
+  moduleId: number;
+  moduleName: string;
+  snapshotDatetime: string;
+  userId: number;
+}
+
+export interface MigrationSnapshotsResponse {
+  success: boolean;
+  message?: string;
+  snapshots: SnapshotSummary[];
+}

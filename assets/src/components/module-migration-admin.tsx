@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useModuleMigration } from '../hooks/use-module-migration';
 import type { MigrationRank, ModuleMigrationCandidate } from '../types';
 import DiffPreviewModal from './diff-preview-modal';
+import MigrationHistory from './migration-history';
 
 interface ModuleMigrationAdminProps {
   blogId: number;
@@ -162,6 +163,8 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
         onApply={() => void handleApply()}
         isApplying={isApplying}
       />
+
+      <MigrationHistory blogId={blogId} onRollbackSuccess={() => void loadModules()} />
     </div>
   );
 }

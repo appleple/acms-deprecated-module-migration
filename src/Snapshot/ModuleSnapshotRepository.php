@@ -61,6 +61,39 @@ final class ModuleSnapshotRepository
     }
 
     /**
+     * 指定ブログが所有するスナップショットを新しい順(snapshot_id降順)に列挙する
+     * (移行履歴一覧画面向け。detailed-design.html「13. ロールバック設計」の
+     * 「適用直後のみロールバック可能」という制約を緩和し、ページ遷移後もこの一覧から
+     * 任意のスナップショットへロールバックできるようにする)。
+     *
+     * @return SnapshotSummary[]
+     */
+    public function findAllByBlogId(int $blogId): array
+    {
+        $sql = SQL::newSelect('module_migration_snapshot');
+        $sql->addSelect('snapshot_id');
+        $sql->addSelect('snapshot_module_id');
+        $sql->addSelect('snapshot_before_json');
+        $sql->addSelect('snapshot_datetime');
+        $sql->addSelect('snapshot_user_id');
+        $sql->addWhereOpr('snapshot_blog_id', $blogId);
+        $sql->setOrder('snapshot_id', 'DESC');
+
+        /**
+         * @var list<array{
+         *     snapshot_id: int|string,
+         *     snapshot_module_id: int|string,
+         *     snapshot_before_json: string,
+         *     snapshot_datetime: string,
+         *     snapshot_user_id: int|string
+         * }> $rows
+         */
+        $rows = DB::query($sql->get(dsn()), 'all');
+
+        return array_map(fn (array $row): SnapshotSummary => $this->toSnapshotSummary($row), $rows);
+    }
+
+    /**
      * @param int|null $expectedBlogId 指定した場合、スナップショットの所有ブログと一致しなければ
      *        復元を一切行わずに例外をスローする(呼び出し元の権限チェックがblogId単位で行われる
      *        ため、snapshotIdだけを頼りに他ブログのスナップショットを復元できてしまう
@@ -198,5 +231,29 @@ final class ModuleSnapshotRepository
         if (DB::query($sql, 'exec') === false) {
             throw new \RuntimeException($errorMessage);
         }
+    }
+
+    /**
+     * @param array{
+     *     snapshot_id: int|string,
+     *     snapshot_module_id: int|string,
+     *     snapshot_before_json: string,
+     *     snapshot_datetime: string,
+     *     snapshot_user_id: int|string
+     * } $row
+     */
+    private function toSnapshotSummary(array $row): SnapshotSummary
+    {
+        /** @var array{module?: array{module_name?: string}} $payload */
+        $payload = json_decode($row['snapshot_before_json'], true, 512, JSON_THROW_ON_ERROR);
+        $moduleName = $payload['module']['module_name'] ?? '';
+
+        return new SnapshotSummary(
+            snapshotId: (int) $row['snapshot_id'],
+            moduleId: (int) $row['snapshot_module_id'],
+            moduleName: $moduleName,
+            snapshotDatetime: $row['snapshot_datetime'],
+            userId: (int) $row['snapshot_user_id']
+        );
     }
 }
