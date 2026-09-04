@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>DeprecatedModuleMigration 検証レポート</title>
+<style>
+  :root {
+    --border: #d9dde3;
+    --bg-soft: #f6f7f9;
+    --accent: #2f6fed;
+    --ok: #1a7f37;
+    --warn: #9a6700;
+    --danger: #cf222e;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    line-height: 1.7;
+    color: #1b1f24;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+    background: #fff;
+  }
+  h1 { font-size: 28px; border-bottom: 3px solid var(--accent); padding-bottom: 12px; }
+  h2 { font-size: 21px; margin-top: 48px; border-left: 5px solid var(--accent); padding-left: 10px; }
+  h3 { font-size: 16px; margin-top: 28px; color: #24292f; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--bg-soft); }
+  code { background: var(--bg-soft); padding: 2px 5px; border-radius: 4px; font-size: 13px; }
+  pre { background: #0d1117; color: #e6edf3; padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; color: #fff; }
+  .badge-a { background: var(--ok); }
+  .badge-b { background: var(--warn); }
+  .badge-c { background: var(--danger); }
+  .badge-ok { background: var(--ok); }
+  figure { margin: 20px 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-soft); }
+  figure img { width: 100%; display: block; }
+  figcaption { padding: 8px 14px; font-size: 13px; color: #444; border-top: 1px solid var(--border); background: #fff; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .callout { background: var(--bg-soft); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  .callout.bug { border-left-color: var(--danger); background: #fff3f3; }
+  .callout.fix { border-left-color: var(--ok); background: #f2fbf3; }
+  .toc { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: 16px 24px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc li { margin: 4px 0; }
+  .meta { color: #57606a; font-size: 14px; }
+  .checkmark { color: var(--ok); font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>DeprecatedModuleMigration 実機検証レポート</h1>
+<p class="meta">
+  対象: <code>acms-deprecated-module-migration</code>（a-blog cms プラグイン）<br>
+  検証環境: Docker Compose（<code>appleple/acms:3.2-php8.5</code> + MySQL 8.4）上に a-blog cms を新規インストールし、
+  管理画面から実際にプラグインを操作して確認。
+</p>
+
+<nav class="toc">
+  <strong>目次</strong>
+  <ol>
+    <li><a href="#spec">最終的な仕様</a></li>
+    <li><a href="#arch">アーキテクチャ・技術構成</a></li>
+    <li><a href="#verification">ブラウザ実機検証の内容と結果</a></li>
+    <li><a href="#bugs">実機検証で発見・修正した重大な不具合</a></li>
+    <li><a href="#ci">テスト・CI状況</a></li>
+    <li><a href="#limitations">既知の制約</a></li>
+  </ol>
+</nav>
+
+<h2 id="spec">1. 最終的な仕様</h2>
+
+<p>
+非推奨モジュール（旧モジュール）から代替モジュールへ、<strong>設定値（<code>module</code> / <code>config</code> テーブル）だけ</strong>を移行する管理画面プラグインです。
+テンプレートファイルの書き換えは対象外で、旧モジュール名がテンプレート上に残っている箇所はエディタの全文検索等で別途確認する運用を前提としています。
+</p>
+
+<table>
+  <thead>
+    <tr><th>非推奨モジュール</th><th>代替モジュール</th><th>難易度</th><th>移行方式</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Plugin_Schedule</code></td>
+      <td><code>Schedule</code></td>
+      <td><span class="badge badge-a">A: 自動移行可能</span></td>
+      <td>configキー・デフォルト値まで完全一致するため、モジュール名のリネームのみ（設定値の変換は発生しない）</td>
+    </tr>
+    <tr>
+      <td><code>Entry_Headline</code> / <code>Entry_List</code> / <code>Entry_Photo</code></td>
+      <td><code>Entry_Summary</code></td>
+      <td><span class="badge badge-b">B: 要レビュー</span></td>
+      <td>旧モジュールごとに異なる設定キーを <code>Entry_Summary</code> の対応キーへ変換して書き込み</td>
+    </tr>
+    <tr>
+      <td><code>Category_EntryList</code></td>
+      <td><code>Category_EntrySummary</code></td>
+      <td><span class="badge badge-b">B: 要レビュー</span></td>
+      <td>設定キーを変換。テンプレート変数体系の相違（<code>entryUrl</code>/<code>entryTitle</code> 等 → <code>url</code>/<code>title</code> 等、<code>unit:loop</code> でのラップが必要）を注意事項として表示</td>
+    </tr>
+    <tr>
+      <td><code>Banner</code></td>
+      <td><code>Media_Banner</code></td>
+      <td><span class="badge badge-c">C: 要手動対応（一部オプトイン）</span></td>
+      <td>バナー画像をメディアライブラリへ移設。実ファイルが存在しないスロットは自動的に除外し、警告として表示</td>
+    </tr>
+    <tr>
+      <td><code>User_Profile</code></td>
+      <td><code>User_Search</code></td>
+      <td><span class="badge badge-c">C: 要手動対応（自動移行なし）</span></td>
+      <td>自動移行を提供しない。差分プレビューは「自動移行できない理由」チェックリストのみを表示し、適用ボタンは無効化</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>操作フロー</h3>
+<p>管理画面サイドバーの「拡張アプリ」→「DeprecatedModuleMigration」から、ブログ単位で以下の流れで進める。</p>
+<ol>
+  <li><strong>検出</strong> — ブログの <code>module</code> テーブルを走査し、対象の非推奨モジュールを一覧表示（モジュールID・現在のモジュール名・移行先・難易度バッジ）</li>
+  <li><strong>差分確認</strong> — 「差分を確認」ボタンでモーダルを開き、設定キーごとに「現在の実効値」と「移行先の既定値」を比較。値が変わる行には「明示的に書き込みます」バッジ、変わらない行には「変更なし」バッジを表示。ルール別上書き（URLパターン別設定）がある場合はその件数を注意事項として警告表示</li>
+  <li><strong>適用</strong> — 「この内容で適用する」→ アプリ内確認ダイアログ「本当に実行しますか？」で最終確認 → 適用前の <code>module</code> / <code>config</code> 行をスナップショットとして保存した上で書き換え</li>
+  <li><strong>ロールバック</strong> — 「直前の適用を元に戻す」で直前のスナップショットから復元</li>
+</ol>
+
+<h2 id="arch">2. アーキテクチャ・技術構成</h2>
+
+<div class="grid2">
+<div>
+<h3>バックエンド（PHP）</h3>
+<ul>
+  <li>名前空間 <code>Acms\Plugins\DeprecatedModuleMigration\</code>（<code>src/</code> が実体）</li>
+  <li><code>MigrationStrategyInterface</code> を実装した5戦略クラス（<code>Strategy/</code>）</li>
+  <li><code>ModuleMigrationManager</code> が検出・差分計算・適用・ロールバックを統括</li>
+  <li><code>Snapshot/</code> が適用前状態の保存・復元を担当（プラグイン独自テーブル）</li>
+  <li>操作ハンドラは <code>POST/ModuleMigration{Detect,Diff,Apply,Rollback}.php</code></li>
+</ul>
+</div>
+<div>
+<h3>フロントエンド（TypeScript / React）</h3>
+<ul>
+  <li><code>assets/src/</code> を <a href="https://tsdown.dev/" target="_blank" rel="noopener">tsdown</a> で単一バンドル <code>src/dist/admin.js</code> にビルド</li>
+  <li><code>@ablogcms/*</code>（React / react-utils / dialog / fetch-client 等の公開npmパッケージ）をプラグイン自身に独立バンドル</li>
+  <li>管理画面へは <code>&lt;script type="module"&gt;</code> で直接読み込ませる方式（コア本体のバンドルとは別インスタンス）</li>
+  <li>Vitest + Testing Library でユニットテスト</li>
+</ul>
+</div>
+</div>
+
+<h2 id="verification">3. ブラウザ実機検証の内容と結果</h2>
+
+<p>
+Docker Compose（<code>appleple/acms:3.2-php8.5</code> + MySQL 8.4）で a-blog cms を新規インストールし、
+プラグインをインストール・有効化した上で、<strong>想定している7種の旧モジュール全てについて</strong>実際の管理画面操作で検証した。
+</p>
+
+<h3>3-1. モジュール検出</h3>
+<p>7種類の旧モジュールをDBに直接投入（PDO経由でPHPスクリプトを実行）した状態で一覧画面を開き、全件が正しいランクバッジ付きで検出されることを確認した。</p>
+<figure>
+  <img src="verification-screenshots/01-module-list.jpg" alt="モジュール一覧画面">
+  <figcaption>7モジュール全てが検出され、A/B/Cの難易度バッジが仕様通りに表示されている。</figcaption>
+</figure>
+
+<h3>3-2. Plugin_Schedule → Schedule（ランクA・自動移行）</h3>
+<p>
+configキー <code>schedule_unit</code> を投入した状態で差分を確認したところ、差分テーブルは空で表示された。
+これは意図された挙動であることをコード調査で確認済み（<code>ScheduleMigrationStrategy</code> は Plugin_Schedule と Schedule のconfigキー・デフォルト値が完全一致するとの設計判断に基づき、常に空のitems配列を返す。単体テスト・統合テストでも明示的に検証されている）。
+</p>
+<figure>
+  <img src="verification-screenshots/02-plugin-schedule-diff-empty.jpg" alt="Plugin_Scheduleの差分プレビュー(空)">
+  <figcaption>設定キーの変換が不要なため、差分テーブルは意図的に空になる。</figcaption>
+</figure>
+
+<h3>3-3. Entry_Headline → Entry_Summary（ランクB・ルール別上書きあり）</h3>
+<p>
+基本スコープ（<code>entry_headline_limit=5</code>）に加え、URLパターン別設定（ルールID 42）で <code>entry_headline_limit=20</code> という上書きを投入し、ルール単位の移行を検証した。
+</p>
+<figure>
+  <img src="verification-screenshots/03-entry-headline-diff-rule-warning.jpg" alt="Entry_Headlineの差分プレビュー(ルール別上書き警告)">
+  <figcaption>「この設定には1件のルール別上書き（URLパターン別設定）があります。適用時にそれぞれ同じ変換ルールで移行されます。」という注意事項が正しく表示されている。</figcaption>
+</figure>
+<figure>
+  <img src="verification-screenshots/04-entry-headline-confirm-dialog.jpg" alt="適用前の確認ダイアログ">
+  <figcaption>ネイティブの<code>window.confirm</code>ではなく、プラグインが独自にマウントした<code>&lt;DialogContainer/&gt;</code>によるアプリ内モーダルが表示されている。</figcaption>
+</figure>
+<figure>
+  <img src="verification-screenshots/05-entry-headline-apply-success.jpg" alt="適用成功のアラート">
+  <figcaption>「移行を適用しました」と表示され、一覧から mod_headline 行が消える（移行完了）。</figcaption>
+</figure>
+<div class="callout">
+  <strong>DB確認</strong>：適用後、<code>acms_config</code> を直接クエリして検証した。
+  <pre>config_module_id  config_key             config_value  config_rule_id
+2                 entry_summary_limit    5             NULL   ← 基本スコープ
+2                 entry_summary_limit    20            42     ← ルール別上書き(rule_id=42)</pre>
+  基本スコープとルール別上書きが、それぞれ独立した行として正しく <code>entry_summary_limit</code> にリネームされ、値も個別に維持されていることを確認した。
+</div>
+
+<h3>3-4. Entry_List / Entry_Photo → Entry_Summary（ランクB）</h3>
+<figure>
+  <img src="verification-screenshots/06-entry-list-diff.jpg" alt="Entry_Listの差分プレビュー">
+  <figcaption>Entry_List → Entry_Summary。<code>entry_summary_limit</code> が旧値8で明示的に書き込まれる。適用も正常に完了。</figcaption>
+</figure>
+<figure>
+  <img src="verification-screenshots/07-entry-photo-diff.jpg" alt="Entry_Photoの差分プレビュー">
+  <figcaption>Entry_Photo → Entry_Summary。画像関連キー（<code>entry_summary_image_x/y</code> 等）への変換を含め正しく表示。適用も正常に完了。</figcaption>
+</figure>
+
+<h3>3-5. Category_EntryList → Category_EntrySummary（ランクB）</h3>
+<figure>
+  <img src="verification-screenshots/08-category-entrylist-diff.jpg" alt="Category_EntryListの差分プレビュー">
+  <figcaption>テンプレート変数体系の相違に関する注意事項（「設定移行は完了しますが、テンプレートの変数体系が異なるため手動書き換えが必須です」）が表示されている。適用も正常に完了。</figcaption>
+</figure>
+
+<h3>3-6. Banner → Media_Banner（ランクC・オプトイン）</h3>
+<p>実ファイルの存在しない画像パスをconfigに投入し、除外ロジックを検証した。</p>
+<figure>
+  <img src="verification-screenshots/09-banner-diff-file-missing-warning.jpg" alt="Bannerの差分プレビュー(ファイル欠落警告)">
+  <figcaption>「スロット0: banner_img "banner/test.jpg" の実ファイルが見つからないため、このスロットの画像移行は対象から除外しました。」という警告が表示され、意図通り安全側に倒れる挙動を確認した。適用も正常に完了。</figcaption>
+</figure>
+
+<h3>3-7. User_Profile → User_Search（ランクC・自動移行なし）</h3>
+<figure>
+  <img src="verification-screenshots/10-user-profile-unsupported-checklist.jpg" alt="User_Profileの自動移行できない理由チェックリスト">
+  <figcaption>「自動移行できない理由」と6件の注意事項（権限モデルの相違、公開ステータスの既定値が逆転している点、テンプレート変数の相違など）が表示され、「この内容で適用する」ボタンは <code>disabled</code> 属性で無効化されていることをDOM検査でも確認した。</figcaption>
+</figure>
+
+<h3>3-8. ロールバック</h3>
+<p>Banner適用後に「直前の適用を元に戻す」を実行し、スナップショットからの復元を検証した。</p>
+<figure>
+  <img src="verification-screenshots/11-rollback-confirm-dialog.jpg" alt="ロールバック確認ダイアログ">
+  <figcaption>「直前に適用した移行を元に戻します。よろしいですか？」の確認ダイアログ。</figcaption>
+</figure>
+<figure>
+  <img src="verification-screenshots/12-rollback-success.jpg" alt="ロールバック成功">
+  <figcaption>「ロールバックしました」と表示され、一覧に mod_banner（Banner → Media_Banner）が復元されていることを確認した。</figcaption>
+</figure>
+
+<h2 id="bugs">4. 実機検証で発見・修正した重大な不具合</h2>
+
+<p>
+以下の2件は <strong>tsc・PHPStan・Vitest（モック使用）では検出できず、実際のブラウザで操作して初めて発覚した</strong>不具合。いずれも修正済みで、再発防止のテスト・チェックを追加した上でリポジトリにpush済み（CI green）。
+</p>
+
+<div class="callout bug">
+  <strong>不具合1: <code>react-dom/client</code> / <code>react/jsx-runtime</code> が未バンドルでブラウザが壊れる</strong><br>
+  管理画面のカスタム要素（<code>&lt;acms-module-migration-admin&gt;</code>）が何も描画されず、コンソールに
+  <code>TypeError: Failed to resolve module specifier "react-dom/client"</code> というエラーが出ていた。
+  <br><br>
+  <strong>原因</strong>：tsdownの <code>deps.alwaysBundle</code> に文字列の完全一致（<code>'react-dom'</code>）を指定していたため、サブパスimport（<code>react-dom/client</code>）が外部化されたまま残っていた。Node.js のモジュール解決では裸のimportでも解決できてしまうため、tsc・Vitest では問題が表面化しなかった。
+</div>
+<div class="callout fix">
+  <strong>修正</strong>：<code>alwaysBundle</code> を正規表現（<code>/^react-dom$/, /^react-dom\//</code> 等）に変更し、サブパスも確実にバンドルに含めるようにした。
+  再発防止として、ビルド出力（<code>src/dist/admin.js</code>）内に裸のimportが残っていないかを機械的に検査する <code>scripts/check-bundle.mjs</code> を追加し、<code>npm run build</code> 後に自動実行される <code>postbuild</code> フックとして組み込んだ。
+</div>
+
+<div class="callout bug">
+  <strong>不具合2: 適用確認ダイアログ（<code>dialog.confirm()</code>）が永久に未解決のまま止まる</strong><br>
+  「この内容で適用する」をクリックしても確認ダイアログが表示されず、適用APIも一切呼ばれなかった。
+  <br><br>
+  <strong>原因</strong>：<code>@ablogcms/dialog</code> はモジュール内シングルトンのstoreを介して <code>dialog.confirm()</code> と <code>&lt;DialogContainer/&gt;</code> を連携させる設計。a-blog cms本体の管理画面バンドルは自前で <code>&lt;DialogContainer/&gt;</code> を1つグローバルにマウントしているが、それは<strong>本体がバンドルした</strong> <code>@ablogcms/dialog</code> のインスタンス限定のstoreを購読している。本プラグインはtsdownで <code>@ablogcms/*</code> を自身のバンドルへ独立してバンドルしているため、本体とは別インスタンス（別store）になり、本体側の <code>&lt;DialogContainer/&gt;</code> には届かなかった。
+</div>
+<div class="callout fix">
+  <strong>修正</strong>：プラグイン自身のReactツリー内にも <code>&lt;DialogContainer/&gt;</code> を追加し、バンドルされた自分自身の <code>dialog</code> インスタンスに対して解決させるようにした。
+  再発防止として、モックせず実物の <code>@ablogcms/dialog</code> を使う結線テスト（<code>mount-module-migration-admin.test.tsx</code>）を追加した。
+</div>
+
+<h2 id="ci">5. テスト・CI状況</h2>
+<table>
+  <tr><th>種別</th><th>結果</th></tr>
+  <tr><td>フロントエンド（Vitest）</td><td><span class="checkmark">✓</span> 6ファイル / 46件 全て成功（本レポート作成時点で再実行済み）</td></tr>
+  <tr><td>バックエンド（PHPUnit: Unit / Integration）</td><td>35個のテストファイルが存在。Docker上の実DBと接続したCI（GitHub Actions）で継続的に検証</td></tr>
+  <tr><td>GitHub Actions（<code>Test</code> workflow）</td><td><span class="checkmark">✓</span> 最新コミット（2つの不具合修正含む）で成功（成功、約1分38秒）</td></tr>
+</table>
+
+<h2 id="limitations">6. 既知の制約</h2>
+<ul>
+  <li>テンプレートファイル（<code>.html</code> 等）の書き換えは対象外。旧モジュール名・旧変数名がテンプレートに残っている箇所は、エディタの全文検索等で別途手動確認・修正する運用が前提。</li>
+  <li><code>Category_EntryList → Category_EntrySummary</code> と <code>Entry_* → Entry_Summary</code> は設定移行は完了するが、テンプレート側の変数体系が異なるため手動でのテンプレート修正が必須（差分プレビュー画面に注意事項として明示）。</li>
+  <li><code>User_Profile → User_Search</code> は自動移行を提供しない（権限モデル・公開ステータスの既定値・テンプレート変数がいずれも大きく異なるため）。差分確認画面は「自動移行できない理由」チェックリストの提示のみに留まる。</li>
+</ul>
+
+</body>
+</html>
