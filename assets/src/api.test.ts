@@ -1,5 +1,5 @@
 import { fetchClient } from '@ablogcms/fetch-client';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyMigration, detectModules, fetchDiff, fetchSnapshots, rollbackMigration } from './api';
 import type { FetchResponse } from '@ablogcms/fetch-client';
 
@@ -28,7 +28,17 @@ describe('detectModules', () => {
     expect(url).toBe(window.location.href);
     expect(params.get('ACMS_POST_ModuleMigrationDetect')).toBe('post');
     expect(params.get('blogId')).toBe('42');
+    expect(params.get('includeChildren')).toBe('0');
     expect(params.get('formToken')).toBe(window.csrfToken);
+  });
+
+  it('includeChildren:trueを渡した場合は"1"として送信する', async () => {
+    mockedPost.mockReturnValue(respond({ success: true, modules: [] }));
+
+    await detectModules(42, true);
+
+    const [, params] = mockedPost.mock.calls[0] as [string, URLSearchParams];
+    expect(params.get('includeChildren')).toBe('1');
   });
 
   it('success:falseの場合、messageをそのままエラーにして投げる', async () => {
@@ -111,6 +121,47 @@ describe('rollbackMigration', () => {
     expect(params.get('ACMS_POST_ModuleMigrationRollback')).toBe('post');
     expect(params.get('blogId')).toBe('3');
     expect(params.get('snapshotId')).toBe('7');
+  });
+});
+
+describe('CSRFトークンの解決', () => {
+  const originalCsrfToken = window.csrfToken;
+
+  afterEach(() => {
+    window.csrfToken = originalCsrfToken;
+    document.head.querySelectorAll('meta[name="csrf-token"]').forEach((el) => el.remove());
+  });
+
+  it('window.csrfTokenが未設定でも、meta[name="csrf-token"]から取得してformTokenに使う', async () => {
+    // a-blog cms本体(js/src/index.js)はwindow.csrfTokenをmetaタグから同期的に設定するが、
+    // プラグインの<script type="module">は仕様上deferされるため、実行順序次第では
+    // window.csrfTokenがまだ空のままPOSTしてしまう競合状態が起こりうる。
+    // (実機で「初回ロードで処理に失敗する」不具合として発現した。)
+    window.csrfToken = '';
+    const meta = document.createElement('meta');
+    meta.setAttribute('name', 'csrf-token');
+    meta.setAttribute('content', 'meta-fallback-token');
+    document.head.appendChild(meta);
+    mockedPost.mockReturnValue(respond({ success: true, modules: [] }));
+
+    await detectModules(1);
+
+    const [, params] = mockedPost.mock.calls[0] as [string, URLSearchParams];
+    expect(params.get('formToken')).toBe('meta-fallback-token');
+  });
+
+  it('window.csrfTokenが設定されていればそれを優先する', async () => {
+    window.csrfToken = 'window-token';
+    const meta = document.createElement('meta');
+    meta.setAttribute('name', 'csrf-token');
+    meta.setAttribute('content', 'meta-fallback-token');
+    document.head.appendChild(meta);
+    mockedPost.mockReturnValue(respond({ success: true, modules: [] }));
+
+    await detectModules(1);
+
+    const [, params] = mockedPost.mock.calls[0] as [string, URLSearchParams];
+    expect(params.get('formToken')).toBe('window-token');
   });
 });
 

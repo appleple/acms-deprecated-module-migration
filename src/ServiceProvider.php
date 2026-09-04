@@ -5,6 +5,7 @@ namespace Acms\Plugins\DeprecatedModuleMigration;
 use ACMS_App;
 use Acms\Plugins\DeprecatedModuleMigration\Services\PluginSchemaMigrator;
 use Acms\Services\Common\InjectTemplate;
+use Acms\Services\Facades\Asset;
 
 /**
  * 非推奨モジュール自動移行プラグインの登録クラス。
@@ -60,6 +61,21 @@ class ServiceProvider extends ACMS_App
         if (defined('ADMIN') && ADMIN === 'app_' . $this->menu) {
             $inject->add('admin-main', PLUGIN_DIR . 'DeprecatedModuleMigration/template/admin/main.html');
             $inject->add('admin-topicpath', PLUGIN_DIR . 'DeprecatedModuleMigration/template/admin/topicpath.html');
+
+            // Asset APIで登録する(develop_apps/asset-api.html)。deps:['acms-index']で
+            // 本体のcsrfToken設定(js/src/index.js)より後に読み込まれることを保証する
+            // (テンプレートに直接<script>タグを書くと、依存解決を経ずhead/body_endの
+            // 出力順序に完全に依存してしまう)。head/body_endをまたいだdeps指定はできない
+            // ため、acms-index(head)に合わせてこちらもheadで登録する。
+            Asset::script(
+                'deprecated-module-migration-admin',
+                '/' . DIR_OFFSET . ltrim(PLUGIN_DIR, '/') . 'DeprecatedModuleMigration/dist/admin.js',
+                [
+                    'position' => 'head',
+                    'deps' => ['acms-index'],
+                    'attrs' => ['type' => 'module'],
+                ]
+            );
         }
     }
 

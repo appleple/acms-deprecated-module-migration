@@ -21,6 +21,7 @@ window.csrfToken = 'test-csrf-token';
   window as unknown as {
     ACMS: {
       i18n: (key: string) => string;
+      Ready: (listener: () => void) => void;
       Library: {
         dialog: {
           confirm: ReturnType<typeof vi.fn>;
@@ -32,6 +33,9 @@ window.csrfToken = 'test-csrf-token';
   }
 ).ACMS = {
   i18n: vi.fn((key: string) => key),
+  // 本体のACMS.Readyは「index.js読み込み完了後(complete)なら同期的に即実行、まだなら
+  // 完了を待つ」という挙動(acms.js参照)。テストでは常にcomplete相当として即時実行する。
+  Ready: vi.fn((listener: () => void) => listener()),
   Library: {
     dialog: {
       confirm: vi.fn(),

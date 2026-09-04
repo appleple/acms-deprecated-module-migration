@@ -51,6 +51,13 @@ export class ModuleMigrationAdminElement extends HTMLElement {
   }
 }
 
-if (!customElements.get('acms-module-migration-admin')) {
-  customElements.define('acms-module-migration-admin', ModuleMigrationAdminElement);
-}
+// ACMS.Readyは本体(js/src/index.js)の読み込み完了後に発火する(acms.js参照)。
+// プラグインの<script type="module">は仕様上deferされるため、本体スクリプトとの実行順序は
+// 保証されない。ACMS.Readyを待たずにdefine()すると、window.csrfTokenがまだ設定される前に
+// <acms-module-migration-admin>が接続されConnectedCallback→初回API呼び出しが走り、
+// CSRFトークン未設定のまま送信され失敗することがあった(実機で断続的に発生した不具合)。
+window.ACMS.Ready(() => {
+  if (!customElements.get('acms-module-migration-admin')) {
+    customElements.define('acms-module-migration-admin', ModuleMigrationAdminElement);
+  }
+});

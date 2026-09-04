@@ -19,6 +19,19 @@ describe('acms-module-migration-admin', () => {
     expect(element).toBeInstanceOf(ModuleMigrationAdminElement);
   });
 
+  it('customElements.define()はACMS.Ready()のコールバック内で呼ばれる(本体のCSRFトークン設定等の初期化完了を待つため)', async () => {
+    const readySpy = vi.fn();
+    const originalReady = window.ACMS.Ready;
+    window.ACMS.Ready = readySpy;
+
+    vi.resetModules();
+    await import('./module-migration-admin-element');
+
+    expect(readySpy).toHaveBeenCalledTimes(1);
+
+    window.ACMS.Ready = originalReady;
+  });
+
   it('接続時にmountModuleMigrationAdminFromAttributes()を呼びcontrollerを保持する', () => {
     const controller = { unmount: vi.fn() };
     mockedMount.mockReturnValue(controller);
