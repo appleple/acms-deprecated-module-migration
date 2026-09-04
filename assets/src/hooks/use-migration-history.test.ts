@@ -16,6 +16,8 @@ function summary(overrides: Partial<SnapshotSummary> = {}): SnapshotSummary {
     moduleName: 'Plugin_Schedule',
     snapshotDatetime: '2026-08-30 12:00:00',
     userId: 1,
+    blogId: 1,
+    blogName: null,
     ...overrides,
   };
 }
@@ -67,6 +69,31 @@ describe('loadSnapshots', () => {
     expect(result.current.error).toBe('権限がありません。');
     expect(result.current.snapshots).toEqual([]);
   });
+
+  it('includeChildren:trueを渡すとfetchSnapshotsにそのまま渡す', async () => {
+    mockedFetchSnapshots.mockResolvedValue({ success: true, snapshots: [] });
+    const { result } = renderHook(() => useMigrationHistory(1));
+
+    await act(async () => {
+      await result.current.loadSnapshots(true);
+    });
+
+    expect(mockedFetchSnapshots).toHaveBeenCalledWith(1, true);
+  });
+
+  it('引数を省略した場合、直近に指定したincludeChildrenを維持する', async () => {
+    mockedFetchSnapshots.mockResolvedValue({ success: true, snapshots: [] });
+    const { result } = renderHook(() => useMigrationHistory(1));
+
+    await act(async () => {
+      await result.current.loadSnapshots(true);
+    });
+    await act(async () => {
+      await result.current.loadSnapshots();
+    });
+
+    expect(mockedFetchSnapshots).toHaveBeenLastCalledWith(1, true);
+  });
 });
 
 describe('rollback', () => {
@@ -78,8 +105,8 @@ describe('rollback', () => {
 
     let secondResult: boolean | null = null;
     act(() => {
-      void result.current.rollback(10);
-      void result.current.rollback(10).then((r) => {
+      void result.current.rollback(10, 1);
+      void result.current.rollback(10, 1).then((r) => {
         secondResult = r;
       });
     });
@@ -94,13 +121,25 @@ describe('rollback', () => {
     expect(secondResult).toBe(false);
   });
 
+  it('スナップショットの所有ブログIDでrollbackMigration()を呼ぶ(hookのblogIdとは独立)', async () => {
+    mockedRollback.mockResolvedValue({ success: true });
+    mockedFetchSnapshots.mockResolvedValue({ success: true, snapshots: [] });
+    const { result } = renderHook(() => useMigrationHistory(1));
+
+    await act(async () => {
+      await result.current.rollback(10, 5);
+    });
+
+    expect(mockedRollback).toHaveBeenCalledWith(5, 10);
+  });
+
   it('成功したら一覧を再取得する', async () => {
     mockedRollback.mockResolvedValue({ success: true });
     mockedFetchSnapshots.mockResolvedValue({ success: true, snapshots: [summary()] });
     const { result } = renderHook(() => useMigrationHistory(1));
 
     await act(async () => {
-      await result.current.rollback(10);
+      await result.current.rollback(10, 1);
     });
 
     expect(mockedFetchSnapshots).toHaveBeenCalledTimes(1);
@@ -114,7 +153,7 @@ describe('rollback', () => {
     const { result } = renderHook(() => useMigrationHistory(1, { onRollbackSuccess }));
 
     await act(async () => {
-      await result.current.rollback(10);
+      await result.current.rollback(10, 1);
     });
 
     expect(onRollbackSuccess).toHaveBeenCalledTimes(1);
@@ -124,7 +163,7 @@ describe('rollback', () => {
     mockedRollback.mockRejectedValue(new Error('ロールバックに失敗しました。'));
     const { result } = renderHook(() => useMigrationHistory(1));
 
-    const succeeded = await act(async () => result.current.rollback(10));
+    const succeeded = await act(async () => result.current.rollback(10, 1));
 
     expect(succeeded).toBe(false);
     expect(result.current.error).toBe('ロールバックに失敗しました。');

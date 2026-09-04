@@ -19,6 +19,8 @@ function summary(overrides: Partial<SnapshotSummary> = {}): SnapshotSummary {
     moduleName: 'Plugin_Schedule',
     snapshotDatetime: '2026-08-30 12:00:00',
     userId: 1,
+    blogId: 1,
+    blogName: null,
     ...overrides,
   };
 }
@@ -51,6 +53,54 @@ describe('MigrationHistory', () => {
     expect(loadSnapshots).toHaveBeenCalledTimes(1);
   });
 
+  it('includeChildrenを省略した場合、falseでマウント時の一覧取得を呼ぶ', () => {
+    const loadSnapshots = vi.fn();
+    mockedUseMigrationHistory.mockReturnValue(makeHookState({ loadSnapshots }));
+
+    render(<MigrationHistory blogId={1} />);
+
+    expect(loadSnapshots).toHaveBeenCalledWith(false);
+  });
+
+  it('includeChildren:trueを渡すと、trueで一覧取得する', () => {
+    const loadSnapshots = vi.fn();
+    mockedUseMigrationHistory.mockReturnValue(makeHookState({ loadSnapshots }));
+
+    render(<MigrationHistory blogId={1} includeChildren />);
+
+    expect(loadSnapshots).toHaveBeenCalledWith(true);
+  });
+
+  it('includeChildrenが変化すると一覧を取得し直す', () => {
+    const loadSnapshots = vi.fn();
+    mockedUseMigrationHistory.mockReturnValue(makeHookState({ loadSnapshots }));
+
+    const { rerender } = render(<MigrationHistory blogId={1} includeChildren={false} />);
+    expect(loadSnapshots).toHaveBeenLastCalledWith(false);
+
+    rerender(<MigrationHistory blogId={1} includeChildren />);
+
+    expect(loadSnapshots).toHaveBeenLastCalledWith(true);
+  });
+
+  it('スナップショットの所属ブログ名とブログIDを表示する', () => {
+    mockedUseMigrationHistory.mockReturnValue(
+      makeHookState({ snapshots: [summary({ blogName: '子ブログA', blogId: 5 })] })
+    );
+
+    render(<MigrationHistory blogId={1} />);
+
+    expect(screen.getByText('子ブログA (5)')).toBeInTheDocument();
+  });
+
+  it('ブログ名が無い場合はブログIDのみ表示する', () => {
+    mockedUseMigrationHistory.mockReturnValue(makeHookState({ snapshots: [summary({ blogName: null, blogId: 5 })] }));
+
+    render(<MigrationHistory blogId={1} />);
+
+    expect(screen.getByText('(5)')).toBeInTheDocument();
+  });
+
   it('移行履歴が無い場合はその旨を表示する', () => {
     mockedUseMigrationHistory.mockReturnValue(makeHookState());
 
@@ -77,17 +127,17 @@ describe('MigrationHistory', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('移行履歴の取得に失敗しました。');
   });
 
-  it('ロールバックボタンを押し確認してOKした場合、rollback()を呼び成功したらアラートを出す', async () => {
+  it('ロールバックボタンを押し確認してOKした場合、snapshotIdと所属ブログIDでrollback()を呼び成功したらアラートを出す', async () => {
     const user = userEvent.setup();
     const rollback = vi.fn().mockResolvedValue(true);
     mockedConfirm.mockResolvedValue(true);
-    mockedUseMigrationHistory.mockReturnValue(makeHookState({ snapshots: [summary()], rollback }));
+    mockedUseMigrationHistory.mockReturnValue(makeHookState({ snapshots: [summary({ blogId: 7 })], rollback }));
 
     render(<MigrationHistory blogId={1} />);
     await user.click(screen.getByRole('button', { name: 'ロールバック' }));
 
     expect(mockedConfirm).toHaveBeenCalledTimes(1);
-    expect(rollback).toHaveBeenCalledWith(10);
+    expect(rollback).toHaveBeenCalledWith(10, 7);
     await waitFor(() => expect(mockedAlert).toHaveBeenCalledWith('ロールバックしました'));
   });
 

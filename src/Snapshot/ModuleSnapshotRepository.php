@@ -61,22 +61,32 @@ final class ModuleSnapshotRepository
     }
 
     /**
-     * 指定ブログが所有するスナップショットを新しい順(snapshot_id降順)に列挙する
+     * 指定ブログ群が所有するスナップショットを新しい順(snapshot_id降順)に列挙する
      * (移行履歴一覧画面向け。detailed-design.html「13. ロールバック設計」の
      * 「適用直後のみロールバック可能」という制約を緩和し、ページ遷移後もこの一覧から
      * 任意のスナップショットへロールバックできるようにする)。
      *
+     * 「配下のブログを含める」オプション(ModuleMigrationManager::descendantBlogIds())で
+     * 複数ブログをまたいで検出・適用した場合、履歴一覧もその範囲に揃えられるよう
+     * 複数blogIdをまとめて受け取る。
+     *
+     * @param int[] $blogIds
      * @return SnapshotSummary[]
      */
-    public function findAllByBlogId(int $blogId): array
+    public function findAllByBlogIds(array $blogIds): array
     {
+        if ($blogIds === []) {
+            return [];
+        }
+
         $sql = SQL::newSelect('module_migration_snapshot');
         $sql->addSelect('snapshot_id');
         $sql->addSelect('snapshot_module_id');
         $sql->addSelect('snapshot_before_json');
         $sql->addSelect('snapshot_datetime');
         $sql->addSelect('snapshot_user_id');
-        $sql->addWhereOpr('snapshot_blog_id', $blogId);
+        $sql->addSelect('snapshot_blog_id');
+        $sql->addWhereIn('snapshot_blog_id', $blogIds);
         $sql->setOrder('snapshot_id', 'DESC');
 
         /**
@@ -85,7 +95,8 @@ final class ModuleSnapshotRepository
          *     snapshot_module_id: int|string,
          *     snapshot_before_json: string,
          *     snapshot_datetime: string,
-         *     snapshot_user_id: int|string
+         *     snapshot_user_id: int|string,
+         *     snapshot_blog_id: int|string
          * }> $rows
          */
         $rows = DB::query($sql->get(dsn()), 'all');
@@ -239,7 +250,8 @@ final class ModuleSnapshotRepository
      *     snapshot_module_id: int|string,
      *     snapshot_before_json: string,
      *     snapshot_datetime: string,
-     *     snapshot_user_id: int|string
+     *     snapshot_user_id: int|string,
+     *     snapshot_blog_id: int|string
      * } $row
      */
     private function toSnapshotSummary(array $row): SnapshotSummary
@@ -253,7 +265,8 @@ final class ModuleSnapshotRepository
             moduleId: (int) $row['snapshot_module_id'],
             moduleName: $moduleName,
             snapshotDatetime: $row['snapshot_datetime'],
-            userId: (int) $row['snapshot_user_id']
+            userId: (int) $row['snapshot_user_id'],
+            blogId: (int) $row['snapshot_blog_id']
         );
     }
 }

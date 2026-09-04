@@ -15,7 +15,8 @@ final class SnapshotSummary
         public readonly int $moduleId,
         public readonly string $moduleName,
         public readonly string $snapshotDatetime,
-        public readonly int $userId
+        public readonly int $userId,
+        public readonly int $blogId
     ) {
     }
 }

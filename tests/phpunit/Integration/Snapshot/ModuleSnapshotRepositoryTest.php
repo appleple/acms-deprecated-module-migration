@@ -143,8 +143,8 @@ final class ModuleSnapshotRepositoryTest extends DatabaseTestCase
     }
 
     #[Test]
-    #[TestDox('findAllByBlogId()は指定ブログのスナップショットを新しい順に返し、moduleNameはスナップショット時点の値を返す')]
-    public function findAllByBlogIdReturnsSnapshotsForBlogInDescendingOrder(): void
+    #[TestDox('findAllByBlogIds()は指定ブログのスナップショットを新しい順に返し、moduleNameはスナップショット時点の値を返す')]
+    public function findAllByBlogIdsReturnsSnapshotsForBlogInDescendingOrder(): void
     {
         $moduleId1 = ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
         $module1 = new ModuleRow($moduleId1, 'mod_schedule', 'Plugin_Schedule', $this->blogId, 'local');
@@ -154,7 +154,7 @@ final class ModuleSnapshotRepositoryTest extends DatabaseTestCase
         $module2 = new ModuleRow($moduleId2, 'mod_headline', 'Entry_Headline', $this->blogId, 'local');
         $snapshotId2 = $this->repository->save($module2, userId: 2);
 
-        $summaries = $this->repository->findAllByBlogId($this->blogId);
+        $summaries = $this->repository->findAllByBlogIds([$this->blogId]);
 
         $this->assertCount(2, $summaries);
         $this->assertContainsOnlyInstancesOf(SnapshotSummary::class, $summaries);
@@ -164,16 +164,18 @@ final class ModuleSnapshotRepositoryTest extends DatabaseTestCase
         $this->assertSame($moduleId2, $summaries[0]->moduleId);
         $this->assertSame('Entry_Headline', $summaries[0]->moduleName);
         $this->assertSame(2, $summaries[0]->userId);
+        $this->assertSame($this->blogId, $summaries[0]->blogId);
 
         $this->assertSame($snapshotId1, $summaries[1]->snapshotId);
         $this->assertSame($moduleId1, $summaries[1]->moduleId);
         $this->assertSame('Plugin_Schedule', $summaries[1]->moduleName);
         $this->assertSame(1, $summaries[1]->userId);
+        $this->assertSame($this->blogId, $summaries[1]->blogId);
     }
 
     #[Test]
-    #[TestDox('findAllByBlogId()は他ブログのスナップショットを含まない')]
-    public function findAllByBlogIdExcludesOtherBlogs(): void
+    #[TestDox('findAllByBlogIds()は指定していないブログのスナップショットを含まない')]
+    public function findAllByBlogIdsExcludesOtherBlogs(): void
     {
         $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
         $module = new ModuleRow($moduleId, 'mod_schedule', 'Plugin_Schedule', $this->blogId, 'local');
@@ -181,7 +183,43 @@ final class ModuleSnapshotRepositoryTest extends DatabaseTestCase
 
         $otherBlogId = BlogSeeder::seed(['blog_name' => '別ブログ']);
 
-        $summaries = $this->repository->findAllByBlogId($otherBlogId);
+        $summaries = $this->repository->findAllByBlogIds([$otherBlogId]);
+
+        $this->assertSame([], $summaries);
+    }
+
+    #[Test]
+    #[TestDox('findAllByBlogIds()は複数ブログIDを渡すと、それらすべてのスナップショットを新しい順にまとめて返す(「配下のブログを含める」向け)')]
+    public function findAllByBlogIdsReturnsSnapshotsAcrossMultipleBlogs(): void
+    {
+        $childBlogId = BlogSeeder::seed(['blog_name' => '子ブログ']);
+
+        $moduleId1 = ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
+        $module1 = new ModuleRow($moduleId1, 'mod_schedule', 'Plugin_Schedule', $this->blogId, 'local');
+        $snapshotId1 = $this->repository->save($module1, userId: 1);
+
+        $moduleId2 = ModuleSeeder::seed($childBlogId, ['module_name' => 'Entry_Headline']);
+        $module2 = new ModuleRow($moduleId2, 'mod_headline', 'Entry_Headline', $childBlogId, 'local');
+        $snapshotId2 = $this->repository->save($module2, userId: 2);
+
+        $summaries = $this->repository->findAllByBlogIds([$this->blogId, $childBlogId]);
+
+        $this->assertCount(2, $summaries);
+        $this->assertSame($snapshotId2, $summaries[0]->snapshotId);
+        $this->assertSame($childBlogId, $summaries[0]->blogId);
+        $this->assertSame($snapshotId1, $summaries[1]->snapshotId);
+        $this->assertSame($this->blogId, $summaries[1]->blogId);
+    }
+
+    #[Test]
+    #[TestDox('findAllByBlogIds()は空配列を渡すと空配列を返す')]
+    public function findAllByBlogIdsReturnsEmptyForEmptyInput(): void
+    {
+        $moduleId = ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
+        $module = new ModuleRow($moduleId, 'mod_schedule', 'Plugin_Schedule', $this->blogId, 'local');
+        $this->repository->save($module, userId: 1);
+
+        $summaries = $this->repository->findAllByBlogIds([]);
 
         $this->assertSame([], $summaries);
     }

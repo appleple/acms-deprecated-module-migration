@@ -353,13 +353,16 @@ final class ModuleMigrationManager
     }
 
     /**
-     * 対象ブログが所有するスナップショットを新しい順に列挙する(移行履歴一覧画面向け)。
+     * 指定ブログ群が所有するスナップショットを新しい順に列挙する(移行履歴一覧画面向け)。
+     * 「配下のブログを含める」オプションの対象範囲(descendantBlogIds())とdetect()同様、
+     * 複数blogIdをまとめて渡せるようにしている。
      *
+     * @param int[] $blogIds
      * @return \Acms\Plugins\DeprecatedModuleMigration\Snapshot\SnapshotSummary[]
      */
-    public function listSnapshots(int $blogId): array
+    public function listSnapshots(array $blogIds): array
     {
-        return $this->snapshotRepository->findAllByBlogId($blogId);
+        return $this->snapshotRepository->findAllByBlogIds($blogIds);
     }
 
     private function requireStrategy(ModuleRow $module): MigrationStrategyInterface

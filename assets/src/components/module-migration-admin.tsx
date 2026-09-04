@@ -5,6 +5,7 @@ import Spinner from '@ablogcms/components/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ablogcms/components/table';
 import { useEffectOnce } from '@ablogcms/react-hooks';
 import { useState } from 'react';
+import { blogLabel } from '../blog-label';
 import { useModuleMigration } from '../hooks/use-module-migration';
 import type { MigrationRank, ModuleMigrationCandidate } from '../types';
 import DiffPreviewModal from './diff-preview-modal';
@@ -25,10 +26,6 @@ function rankBadgeVariant(rank: MigrationRank | null): 'success' | 'warning' | '
     return 'danger';
   }
   return 'info';
-}
-
-function blogLabel(blogName: string | null, blogId: number): string {
-  return blogName !== null ? `${blogName} (${blogId})` : `(${blogId})`;
 }
 
 function rankLabel(rank: MigrationRank | null): string {
@@ -199,7 +196,11 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
         isApplying={isApplying}
       />
 
-      <MigrationHistory blogId={blogId} onRollbackSuccess={() => void loadModules()} />
+      <MigrationHistory
+        blogId={blogId}
+        includeChildren={includeChildren}
+        onRollbackSuccess={() => void loadModules()}
+      />
     </div>
   );
 }

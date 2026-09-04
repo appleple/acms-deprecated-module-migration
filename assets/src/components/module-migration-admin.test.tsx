@@ -216,6 +216,27 @@ describe('ModuleMigrationAdmin', () => {
 
       expect(loadModules).toHaveBeenLastCalledWith(true);
     });
+
+    it('チェック状態は移行履歴一覧(MigrationHistory)にも連動する', async () => {
+      const user = userEvent.setup();
+      const loadSnapshots = vi.fn();
+      mockedUseModuleMigration.mockReturnValue(makeHookState());
+      mockedUseMigrationHistory.mockReturnValue({
+        snapshots: [],
+        isLoading: false,
+        error: null,
+        isRollingBack: false,
+        loadSnapshots,
+        rollback: vi.fn(),
+      });
+
+      render(<ModuleMigrationAdmin blogId={1} />);
+      expect(loadSnapshots).toHaveBeenLastCalledWith(true);
+
+      await user.click(screen.getByRole('checkbox', { name: '配下のブログを含める' }));
+
+      expect(loadSnapshots).toHaveBeenLastCalledWith(false);
+    });
   });
 
   describe('ロールバック', () => {

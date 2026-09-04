@@ -66,6 +66,8 @@ export interface SnapshotSummary {
   moduleName: string;
   snapshotDatetime: string;
   userId: number;
+  blogId: number;
+  blogName: string | null;
 }
 
 export interface MigrationSnapshotsResponse {

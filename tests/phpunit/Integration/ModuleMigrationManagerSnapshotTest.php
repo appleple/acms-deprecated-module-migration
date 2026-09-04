@@ -74,10 +74,32 @@ final class ModuleMigrationManagerSnapshotTest extends DatabaseTestCase
 
         $outcome = $this->manager->applyWithSnapshot($module, $diff, userId: 1);
 
-        $summaries = $this->manager->listSnapshots($this->blogId);
+        $summaries = $this->manager->listSnapshots([$this->blogId]);
 
         $this->assertCount(1, $summaries);
         $this->assertSame($outcome['snapshotId'], $summaries[0]->snapshotId);
         $this->assertSame('Plugin_Schedule', $summaries[0]->moduleName);
+    }
+
+    #[Test]
+    #[TestDox('listSnapshots()は複数blogIdを渡すと、それらすべてのスナップショットをまとめて返す(「配下のブログを含める」向け)')]
+    public function listSnapshotsReturnsSnapshotsAcrossMultipleBlogs(): void
+    {
+        $childBlogId = BlogSeeder::seed(['blog_name' => '子ブログ']);
+
+        ModuleSeeder::seed($this->blogId, ['module_name' => 'Plugin_Schedule']);
+        $parentModule = $this->manager->detect($this->blogId)[0];
+        $parentOutcome = $this->manager->applyWithSnapshot($parentModule, $this->manager->diff($parentModule), userId: 1);
+
+        ModuleSeeder::seed($childBlogId, ['module_name' => 'Plugin_Schedule']);
+        $childModule = $this->manager->detect($childBlogId)[0];
+        $childOutcome = $this->manager->applyWithSnapshot($childModule, $this->manager->diff($childModule), userId: 1);
+
+        $summaries = $this->manager->listSnapshots([$this->blogId, $childBlogId]);
+        $snapshotIds = array_map(fn ($s) => $s->snapshotId, $summaries);
+
+        $this->assertCount(2, $summaries);
+        $this->assertContains($parentOutcome['snapshotId'], $snapshotIds);
+        $this->assertContains($childOutcome['snapshotId'], $snapshotIds);
     }
 }

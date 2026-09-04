@@ -70,6 +70,9 @@ export function rollbackMigration(blogId: number, snapshotId: number): Promise<M
   return postAcms<MigrationRollbackResponse>('ACMS_POST_ModuleMigrationRollback', { blogId, snapshotId });
 }
 
-export function fetchSnapshots(blogId: number): Promise<MigrationSnapshotsResponse> {
-  return postAcms<MigrationSnapshotsResponse>('ACMS_POST_ModuleMigrationSnapshots', { blogId });
+export function fetchSnapshots(blogId: number, includeChildren: boolean = false): Promise<MigrationSnapshotsResponse> {
+  return postAcms<MigrationSnapshotsResponse>('ACMS_POST_ModuleMigrationSnapshots', {
+    blogId,
+    includeChildren: includeChildren ? '1' : '0',
+  });
 }

@@ -80,7 +80,7 @@ final class ModuleMigrationPresenter
     /**
      * @return array<string, mixed>
      */
-    public function presentSnapshot(SnapshotSummary $summary): array
+    public function presentSnapshot(SnapshotSummary $summary, ?string $blogName = null): array
     {
         return [
             'snapshotId' => $summary->snapshotId,
@@ -88,6 +88,8 @@ final class ModuleMigrationPresenter
             'moduleName' => $summary->moduleName,
             'snapshotDatetime' => $summary->snapshotDatetime,
             'userId' => $summary->userId,
+            'blogId' => $summary->blogId,
+            'blogName' => $blogName,
         ];
     }
 }

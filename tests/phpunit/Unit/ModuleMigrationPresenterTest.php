@@ -121,15 +121,36 @@ class ModuleMigrationPresenterTest extends TestCase
             moduleId: 10,
             moduleName: 'Plugin_Schedule',
             snapshotDatetime: '2026-08-30 12:00:00',
-            userId: 1
+            userId: 1,
+            blogId: 5
         );
 
-        $result = $this->presenter->presentSnapshot($summary);
+        $result = $this->presenter->presentSnapshot($summary, '子ブログ');
 
         $this->assertSame(3, $result['snapshotId']);
         $this->assertSame(10, $result['moduleId']);
         $this->assertSame('Plugin_Schedule', $result['moduleName']);
         $this->assertSame('2026-08-30 12:00:00', $result['snapshotDatetime']);
         $this->assertSame(1, $result['userId']);
+        $this->assertSame(5, $result['blogId']);
+        $this->assertSame('子ブログ', $result['blogName']);
+    }
+
+    #[Test]
+    #[TestDox('presentSnapshot()はblogNameを省略した場合nullになる')]
+    public function presentSnapshotDefaultsBlogNameToNull(): void
+    {
+        $summary = new SnapshotSummary(
+            snapshotId: 3,
+            moduleId: 10,
+            moduleName: 'Plugin_Schedule',
+            snapshotDatetime: '2026-08-30 12:00:00',
+            userId: 1,
+            blogId: 5
+        );
+
+        $result = $this->presenter->presentSnapshot($summary);
+
+        $this->assertNull($result['blogName']);
     }
 }

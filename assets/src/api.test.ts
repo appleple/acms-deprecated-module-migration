@@ -166,7 +166,7 @@ describe('CSRFトークンの解決', () => {
 });
 
 describe('fetchSnapshots', () => {
-  it('blogIdをパラメータに含めてPOSTし、成功時はレスポンスをそのまま返す', async () => {
+  it('blogIdをパラメータに含めてPOSTし、成功時はレスポンスをそのまま返す。includeChildrenは省略時"0"として送信する', async () => {
     mockedPost.mockReturnValue(respond({ success: true, snapshots: [] }));
 
     const result = await fetchSnapshots(5);
@@ -175,6 +175,16 @@ describe('fetchSnapshots', () => {
     const [, params] = mockedPost.mock.calls[0] as [string, URLSearchParams];
     expect(params.get('ACMS_POST_ModuleMigrationSnapshots')).toBe('post');
     expect(params.get('blogId')).toBe('5');
+    expect(params.get('includeChildren')).toBe('0');
+  });
+
+  it('includeChildren:trueを渡した場合は"1"として送信する', async () => {
+    mockedPost.mockReturnValue(respond({ success: true, snapshots: [] }));
+
+    await fetchSnapshots(5, true);
+
+    const [, params] = mockedPost.mock.calls[0] as [string, URLSearchParams];
+    expect(params.get('includeChildren')).toBe('1');
   });
 
   it('success:falseの場合、messageをそのままエラーにして投げる', async () => {
