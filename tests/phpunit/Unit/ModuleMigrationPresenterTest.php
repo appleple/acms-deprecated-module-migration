@@ -57,6 +57,28 @@ class ModuleMigrationPresenterTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('presentModule()はblogNameを渡すとそのまま含める')]
+    public function presentModuleIncludesGivenBlogName(): void
+    {
+        $module = new ModuleRow(1, 'mod_schedule', 'Plugin_Schedule', 5, 'local');
+
+        $result = $this->presenter->presentModule($module, null, '子ブログ');
+
+        $this->assertSame('子ブログ', $result['blogName']);
+    }
+
+    #[Test]
+    #[TestDox('presentModule()はblogNameを省略した場合nullになる')]
+    public function presentModuleDefaultsBlogNameToNull(): void
+    {
+        $module = new ModuleRow(1, 'mod_schedule', 'Plugin_Schedule', 5, 'local');
+
+        $result = $this->presenter->presentModule($module, null);
+
+        $this->assertNull($result['blogName']);
+    }
+
+    #[Test]
     #[TestDox('presentDiff()は項目・警告・再現不可理由・isBlockedを含む配列を返す')]
     public function presentDiffIncludesAllFields(): void
     {

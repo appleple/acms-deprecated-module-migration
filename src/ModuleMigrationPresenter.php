@@ -17,7 +17,7 @@ final class ModuleMigrationPresenter
     /**
      * @return array<string, mixed>
      */
-    public function presentModule(ModuleRow $module, ?MigrationStrategyInterface $strategy): array
+    public function presentModule(ModuleRow $module, ?MigrationStrategyInterface $strategy, ?string $blogName = null): array
     {
         return [
             'moduleId' => $module->moduleId,
@@ -27,6 +27,7 @@ final class ModuleMigrationPresenter
             'moduleScope' => $module->moduleScope,
             'targetModuleName' => $strategy?->targetModuleName($module->moduleName),
             'rank' => $strategy?->rank(),
+            'blogName' => $blogName,
         ];
     }
 

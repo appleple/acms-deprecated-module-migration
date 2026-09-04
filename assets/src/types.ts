@@ -8,6 +8,7 @@ export interface ModuleMigrationCandidate {
   moduleScope: 'local' | 'global';
   targetModuleName: string | null;
   rank: MigrationRank | null;
+  blogName: string | null;
 }
 
 export interface MigrationDiffItem {

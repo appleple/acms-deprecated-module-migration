@@ -42,6 +42,7 @@ describe('mountModuleMigrationAdminFromAttributes', () => {
           moduleScope: 'local',
           targetModuleName: 'Schedule',
           rank: 'A',
+          blogName: null,
         },
       ],
     });

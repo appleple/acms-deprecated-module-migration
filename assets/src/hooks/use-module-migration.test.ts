@@ -25,6 +25,7 @@ function candidate(overrides: Partial<ModuleMigrationCandidate> = {}): ModuleMig
     moduleScope: 'local',
     targetModuleName: 'Schedule',
     rank: 'A',
+    blogName: 'テスト用ブログ',
     ...overrides,
   };
 }
@@ -87,6 +88,28 @@ describe('loadModules', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('引数を省略した場合、includeChildren:falseで取得する', async () => {
+    mockedDetect.mockResolvedValue({ success: true, modules: [] });
+    const { result } = renderHook(() => useModuleMigration(1));
+
+    await act(async () => {
+      await result.current.loadModules();
+    });
+
+    expect(mockedDetect).toHaveBeenCalledWith(1, false);
+  });
+
+  it('includeChildren:trueを渡すとそのまま取得する', async () => {
+    mockedDetect.mockResolvedValue({ success: true, modules: [] });
+    const { result } = renderHook(() => useModuleMigration(1));
+
+    await act(async () => {
+      await result.current.loadModules(true);
+    });
+
+    expect(mockedDetect).toHaveBeenCalledWith(1, true);
+  });
+
   it('Errorが投げられた場合そのmessageをerrorに反映する', async () => {
     mockedDetect.mockRejectedValue(new Error('権限がありません。'));
     const { result } = renderHook(() => useModuleMigration(1));
@@ -112,6 +135,17 @@ describe('loadModules', () => {
 });
 
 describe('loadDiff', () => {
+  it('渡されたmoduleBlogIdでfetchDiff()を呼ぶ(子ブログのモジュールにも対応するため)', async () => {
+    mockedFetchDiff.mockResolvedValue(diffResponse('対象モジュール'));
+    const { result } = renderHook(() => useModuleMigration(1));
+
+    await act(async () => {
+      await result.current.loadDiff(5, 99);
+    });
+
+    expect(mockedFetchDiff).toHaveBeenCalledWith(99, 5);
+  });
+
   it('後発のloadDiff呼び出し後に先発のレスポンスが届いても結果を反映しない(競合状態ガード)', async () => {
     const first = deferred<MigrationDiffResponse>();
     const second = deferred<MigrationDiffResponse>();
@@ -119,10 +153,10 @@ describe('loadDiff', () => {
     const { result } = renderHook(() => useModuleMigration(1));
 
     act(() => {
-      void result.current.loadDiff(1);
+      void result.current.loadDiff(1, 1);
     });
     act(() => {
-      void result.current.loadDiff(2);
+      void result.current.loadDiff(2, 1);
     });
 
     await act(async () => {
@@ -145,7 +179,7 @@ describe('loadDiff', () => {
     const { result } = renderHook(() => useModuleMigration(1));
 
     act(() => {
-      void result.current.loadDiff(1);
+      void result.current.loadDiff(1, 1);
     });
     act(() => {
       result.current.clearDiff();
@@ -165,7 +199,7 @@ describe('loadDiff', () => {
     const { result } = renderHook(() => useModuleMigration(1));
 
     await act(async () => {
-      await result.current.loadDiff(1);
+      await result.current.loadDiff(1, 1);
     });
 
     expect(result.current.diffError).toBe('差分の取得に失敗しました。');
@@ -174,6 +208,19 @@ describe('loadDiff', () => {
 });
 
 describe('apply', () => {
+  it('渡されたmoduleBlogIdでapplyMigration()を呼ぶ(子ブログのモジュールにも対応するため)', async () => {
+    mockedApply.mockResolvedValue(applyResponse(10));
+    mockedDetect.mockResolvedValue({ success: true, modules: [] });
+    const { result } = renderHook(() => useModuleMigration(1));
+
+    await act(async () => {
+      await result.current.apply(5, 99);
+    });
+
+    expect(mockedApply).toHaveBeenCalledWith(99, 5, false);
+    expect(result.current.appliedBlogId).toBe(99);
+  });
+
   it('連続で呼び出しても実行中はAPIを1回しか呼ばない(二重送信防止)', async () => {
     const d = deferred<MigrationApplyResponse>();
     mockedApply.mockReturnValue(d.promise);
@@ -182,8 +229,8 @@ describe('apply', () => {
 
     let secondResult: MigrationApplyResponse | null = null;
     act(() => {
-      void result.current.apply(1);
-      void result.current.apply(1).then((r) => {
+      void result.current.apply(1, 1);
+      void result.current.apply(1, 1).then((r) => {
         secondResult = r;
       });
     });
@@ -205,7 +252,7 @@ describe('apply', () => {
     const { result } = renderHook(() => useModuleMigration(1));
 
     await act(async () => {
-      await result.current.apply(1);
+      await result.current.apply(1, 1);
     });
 
     expect(result.current.diffResult).toBeNull();
@@ -213,11 +260,26 @@ describe('apply', () => {
     expect(mockedDetect).toHaveBeenCalledTimes(1);
   });
 
+  it('直前にincludeChildren:trueで一覧を取得していた場合、再取得もincludeChildren:trueで行う', async () => {
+    mockedApply.mockResolvedValue(applyResponse(10));
+    mockedDetect.mockResolvedValue({ success: true, modules: [] });
+    const { result } = renderHook(() => useModuleMigration(1));
+
+    await act(async () => {
+      await result.current.loadModules(true);
+    });
+    await act(async () => {
+      await result.current.apply(1, 1);
+    });
+
+    expect(mockedDetect).toHaveBeenNthCalledWith(2, 1, true);
+  });
+
   it('失敗したらerrorにメッセージを入れnullを返す(applyResultは更新しない)', async () => {
     mockedApply.mockRejectedValue(new Error('適用に失敗しました。'));
     const { result } = renderHook(() => useModuleMigration(1));
 
-    const response = await act(async () => result.current.apply(1));
+    const response = await act(async () => result.current.apply(1, 1));
 
     expect(response).toBeNull();
     expect(result.current.error).toBe('適用に失敗しました。');
@@ -226,6 +288,18 @@ describe('apply', () => {
 });
 
 describe('rollback', () => {
+  it('渡されたsnapshotBlogIdでrollbackMigration()を呼ぶ(子ブログのモジュールにも対応するため)', async () => {
+    mockedRollback.mockResolvedValue({ success: true });
+    mockedDetect.mockResolvedValue({ success: true, modules: [] });
+    const { result } = renderHook(() => useModuleMigration(1));
+
+    await act(async () => {
+      await result.current.rollback(10, 99);
+    });
+
+    expect(mockedRollback).toHaveBeenCalledWith(99, 10);
+  });
+
   it('連続で呼び出しても実行中はAPIを1回しか呼ばない(二重送信防止)', async () => {
     const d = deferred<MigrationRollbackResponse>();
     mockedRollback.mockReturnValue(d.promise);
@@ -234,8 +308,8 @@ describe('rollback', () => {
 
     let secondResult: boolean | null = null;
     act(() => {
-      void result.current.rollback(10);
-      void result.current.rollback(10).then((r) => {
+      void result.current.rollback(10, 1);
+      void result.current.rollback(10, 1).then((r) => {
         secondResult = r;
       });
     });
@@ -257,15 +331,16 @@ describe('rollback', () => {
     const { result } = renderHook(() => useModuleMigration(1));
 
     await act(async () => {
-      await result.current.apply(1);
+      await result.current.apply(1, 1);
     });
     expect(result.current.applyResult).not.toBeNull();
 
     await act(async () => {
-      await result.current.rollback(10);
+      await result.current.rollback(10, 1);
     });
 
     expect(result.current.applyResult).toBeNull();
+    expect(result.current.appliedBlogId).toBeNull();
     expect(mockedDetect).toHaveBeenCalledTimes(2);
   });
 
@@ -273,7 +348,7 @@ describe('rollback', () => {
     mockedRollback.mockRejectedValue(new Error('ロールバックに失敗しました。'));
     const { result } = renderHook(() => useModuleMigration(1));
 
-    const succeeded = await act(async () => result.current.rollback(10));
+    const succeeded = await act(async () => result.current.rollback(10, 1));
 
     expect(succeeded).toBe(false);
     expect(result.current.error).toBe('ロールバックに失敗しました。');

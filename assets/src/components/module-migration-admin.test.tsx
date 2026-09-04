@@ -25,6 +25,7 @@ function candidate(overrides: Partial<ModuleMigrationCandidate> = {}): ModuleMig
     moduleScope: 'local',
     targetModuleName: 'Schedule',
     rank: 'A',
+    blogName: 'テスト用ブログ',
     ...overrides,
   };
 }
@@ -62,6 +63,7 @@ function makeHookState(overrides: Partial<HookReturn> = {}): HookReturn {
     isDiffLoading: false,
     diffError: null,
     applyResult: null,
+    appliedBlogId: null,
     isApplying: false,
     isRollingBack: false,
     loadModules: vi.fn(),
@@ -128,6 +130,26 @@ describe('ModuleMigrationAdmin', () => {
     expect(buttons[1]).toBeDisabled();
   });
 
+  it('モジュール一覧に所属ブログ名とブログIDの列を表示する', () => {
+    mockedUseModuleMigration.mockReturnValue(
+      makeHookState({ modules: [candidate({ blogName: '子ブログA', moduleBlogId: 5 })] })
+    );
+
+    render(<ModuleMigrationAdmin blogId={1} />);
+
+    expect(screen.getByText('子ブログA (5)')).toBeInTheDocument();
+  });
+
+  it('ブログ名が無い場合はブログIDのみ表示する', () => {
+    mockedUseModuleMigration.mockReturnValue(
+      makeHookState({ modules: [candidate({ blogName: null, moduleBlogId: 5 })] })
+    );
+
+    render(<ModuleMigrationAdmin blogId={1} />);
+
+    expect(screen.getByText('(5)')).toBeInTheDocument();
+  });
+
   it('errorがある場合はalertロールで表示する', () => {
     mockedUseModuleMigration.mockReturnValue(makeHookState({ error: '一覧の取得に失敗しました。' }));
 
@@ -141,35 +163,75 @@ describe('ModuleMigrationAdmin', () => {
     const { rerender } = render(<ModuleMigrationAdmin blogId={1} />);
     expect(screen.queryByRole('button', { name: '直前の適用を元に戻す' })).not.toBeInTheDocument();
 
-    mockedUseModuleMigration.mockReturnValue(makeHookState({ applyResult: applyResponse() }));
+    mockedUseModuleMigration.mockReturnValue(makeHookState({ applyResult: applyResponse(), appliedBlogId: 1 }));
     rerender(<ModuleMigrationAdmin blogId={1} />);
     expect(screen.getByRole('button', { name: '直前の適用を元に戻す' })).toBeInTheDocument();
   });
 
-  it('差分を確認ボタンを押すとloadDiff()を呼び、差分モーダルを開く', async () => {
+  it('差分を確認ボタンを押すとmoduleIdとmoduleBlogIdでloadDiff()を呼び、差分モーダルを開く', async () => {
     const user = userEvent.setup();
     const loadDiff = vi.fn();
-    mockedUseModuleMigration.mockReturnValue(makeHookState({ modules: [candidate()], loadDiff }));
+    mockedUseModuleMigration.mockReturnValue(
+      makeHookState({ modules: [candidate({ moduleId: 1, moduleBlogId: 7 })], loadDiff })
+    );
 
     render(<ModuleMigrationAdmin blogId={1} />);
     await user.click(screen.getByRole('button', { name: '差分を確認' }));
 
-    expect(loadDiff).toHaveBeenCalledWith(1);
+    expect(loadDiff).toHaveBeenCalledWith(1, 7);
     expect(screen.getByText('差分プレビュー')).toBeInTheDocument();
   });
 
+  describe('配下のブログを含める', () => {
+    it('既定で有効(チェック済み)で、マウント時にincludeChildren:trueで一覧取得する', () => {
+      const loadModules = vi.fn();
+      mockedUseModuleMigration.mockReturnValue(makeHookState({ loadModules }));
+
+      render(<ModuleMigrationAdmin blogId={1} />);
+
+      expect(screen.getByRole('checkbox', { name: '配下のブログを含める' })).toBeChecked();
+      expect(loadModules).toHaveBeenCalledWith(true);
+    });
+
+    it('チェックを外すと子ブログを含めずにloadModules()を呼び直す', async () => {
+      const user = userEvent.setup();
+      const loadModules = vi.fn();
+      mockedUseModuleMigration.mockReturnValue(makeHookState({ loadModules }));
+
+      render(<ModuleMigrationAdmin blogId={1} />);
+      await user.click(screen.getByRole('checkbox', { name: '配下のブログを含める' }));
+
+      expect(loadModules).toHaveBeenLastCalledWith(false);
+    });
+
+    it('チェックを外して再度チェックすると子ブログを含めてloadModules()を呼び直す', async () => {
+      const user = userEvent.setup();
+      const loadModules = vi.fn();
+      mockedUseModuleMigration.mockReturnValue(makeHookState({ loadModules }));
+
+      render(<ModuleMigrationAdmin blogId={1} />);
+      const checkbox = screen.getByRole('checkbox', { name: '配下のブログを含める' });
+      await user.click(checkbox);
+      await user.click(checkbox);
+
+      expect(loadModules).toHaveBeenLastCalledWith(true);
+    });
+  });
+
   describe('ロールバック', () => {
-    it('確認してOKした場合、rollback()を呼び成功したらアラートを出す', async () => {
+    it('確認してOKした場合、snapshotIdと適用したブログIDでrollback()を呼び成功したらアラートを出す', async () => {
       const user = userEvent.setup();
       const rollback = vi.fn().mockResolvedValue(true);
       mockedConfirm.mockResolvedValue(true);
-      mockedUseModuleMigration.mockReturnValue(makeHookState({ applyResult: applyResponse(), rollback }));
+      mockedUseModuleMigration.mockReturnValue(
+        makeHookState({ applyResult: applyResponse(), appliedBlogId: 7, rollback })
+      );
 
       render(<ModuleMigrationAdmin blogId={1} />);
       await user.click(screen.getByRole('button', { name: '直前の適用を元に戻す' }));
 
       expect(mockedConfirm).toHaveBeenCalledTimes(1);
-      expect(rollback).toHaveBeenCalledWith(10);
+      expect(rollback).toHaveBeenCalledWith(10, 7);
       expect(mockedAlert).toHaveBeenCalledWith('ロールバックしました');
     });
 
@@ -177,7 +239,9 @@ describe('ModuleMigrationAdmin', () => {
       const user = userEvent.setup();
       const rollback = vi.fn();
       mockedConfirm.mockResolvedValue(false);
-      mockedUseModuleMigration.mockReturnValue(makeHookState({ applyResult: applyResponse(), rollback }));
+      mockedUseModuleMigration.mockReturnValue(
+        makeHookState({ applyResult: applyResponse(), appliedBlogId: 1, rollback })
+      );
 
       render(<ModuleMigrationAdmin blogId={1} />);
       await user.click(screen.getByRole('button', { name: '直前の適用を元に戻す' }));
@@ -187,13 +251,13 @@ describe('ModuleMigrationAdmin', () => {
   });
 
   describe('適用', () => {
-    it('ランクCのモジュールを適用する場合、optIn:trueで呼ぶ', async () => {
+    it('ランクCのモジュールを適用する場合、moduleBlogIdとoptIn:trueで呼ぶ', async () => {
       const user = userEvent.setup();
       const apply = vi.fn().mockResolvedValue(applyResponse());
       mockedConfirm.mockResolvedValue(true);
       mockedUseModuleMigration.mockReturnValue(
         makeHookState({
-          modules: [candidate({ rank: 'C', moduleName: 'Banner', targetModuleName: 'Media_Banner' })],
+          modules: [candidate({ rank: 'C', moduleName: 'Banner', targetModuleName: 'Media_Banner', moduleBlogId: 7 })],
           diffResult: diffResponse(),
           apply,
         })
@@ -203,23 +267,23 @@ describe('ModuleMigrationAdmin', () => {
       await user.click(screen.getByRole('button', { name: '差分を確認' }));
       await user.click(screen.getByRole('button', { name: 'この内容で適用する' }));
 
-      await waitFor(() => expect(apply).toHaveBeenCalledWith(1, true));
+      await waitFor(() => expect(apply).toHaveBeenCalledWith(1, 7, true));
       await waitFor(() => expect(mockedAlert).toHaveBeenCalledWith('移行を適用しました'));
     });
 
-    it('ランクA/Bのモジュールを適用する場合、optIn:falseで呼ぶ', async () => {
+    it('ランクA/Bのモジュールを適用する場合、moduleBlogIdとoptIn:falseで呼ぶ', async () => {
       const user = userEvent.setup();
       const apply = vi.fn().mockResolvedValue(applyResponse());
       mockedConfirm.mockResolvedValue(true);
       mockedUseModuleMigration.mockReturnValue(
-        makeHookState({ modules: [candidate({ rank: 'A' })], diffResult: diffResponse(), apply })
+        makeHookState({ modules: [candidate({ rank: 'A', moduleBlogId: 7 })], diffResult: diffResponse(), apply })
       );
 
       render(<ModuleMigrationAdmin blogId={1} />);
       await user.click(screen.getByRole('button', { name: '差分を確認' }));
       await user.click(screen.getByRole('button', { name: 'この内容で適用する' }));
 
-      await waitFor(() => expect(apply).toHaveBeenCalledWith(1, false));
+      await waitFor(() => expect(apply).toHaveBeenCalledWith(1, 7, false));
     });
 
     it('確認でキャンセルした場合、apply()は呼ばれない', async () => {

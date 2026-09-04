@@ -1,5 +1,6 @@
 import Badge from '@ablogcms/components/badge';
 import Button from '@ablogcms/components/button';
+import Checkbox from '@ablogcms/components/checkbox';
 import Spinner from '@ablogcms/components/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ablogcms/components/table';
 import { useEffectOnce } from '@ablogcms/react-hooks';
@@ -26,6 +27,10 @@ function rankBadgeVariant(rank: MigrationRank | null): 'success' | 'warning' | '
   return 'info';
 }
 
+function blogLabel(blogName: string | null, blogId: number): string {
+  return blogName !== null ? `${blogName} (${blogId})` : `(${blogId})`;
+}
+
 function rankLabel(rank: MigrationRank | null): string {
   if (rank === 'A') {
     return 'A: 自動移行可能';
@@ -48,6 +53,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
     isDiffLoading,
     diffError,
     applyResult,
+    appliedBlogId,
     isApplying,
     isRollingBack,
     loadModules,
@@ -57,14 +63,20 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
     rollback,
   } = useModuleMigration(blogId);
   const [selectedModule, setSelectedModule] = useState<ModuleMigrationCandidate | null>(null);
+  const [includeChildren, setIncludeChildren] = useState(true);
 
   useEffectOnce(() => {
-    void loadModules();
+    void loadModules(includeChildren);
   });
+
+  const handleIncludeChildrenChange = (checked: boolean) => {
+    setIncludeChildren(checked);
+    void loadModules(checked);
+  };
 
   const handleShowDiff = (candidate: ModuleMigrationCandidate) => {
     setSelectedModule(candidate);
-    void loadDiff(candidate.moduleId);
+    void loadDiff(candidate.moduleId, candidate.moduleBlogId);
   };
 
   const handleCloseDiff = () => {
@@ -86,7 +98,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
     // 伴うため、既定で無効化された機能への明示的なオプトインとして扱う
     // (basic-design.html「5. スコープ外・非対応事項」)。
     const optIn = selectedModule.rank === 'C';
-    const response = await apply(selectedModule.moduleId, optIn);
+    const response = await apply(selectedModule.moduleId, selectedModule.moduleBlogId, optIn);
     if (response !== null) {
       setSelectedModule(null);
       await ACMS.Library.dialog.alert('移行を適用しました');
@@ -94,14 +106,14 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
   };
 
   const handleRollback = async () => {
-    if (applyResult === null) {
+    if (applyResult === null || appliedBlogId === null) {
       return;
     }
     const confirmed = await ACMS.Library.dialog.confirm('直前に適用した移行を元に戻します。よろしいですか？');
     if (!confirmed) {
       return;
     }
-    const succeeded = await rollback(applyResult.snapshotId);
+    const succeeded = await rollback(applyResult.snapshotId, appliedBlogId);
     if (succeeded) {
       await ACMS.Library.dialog.alert('ロールバックしました');
     }
@@ -112,6 +124,12 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
       <p>旧モジュールから代替モジュールへの設定移行を支援します。テンプレートファイルの書き換えは行いません。</p>
 
       {error !== null && <p role="alert">{error}</p>}
+
+      <Checkbox
+        label="配下のブログを含める"
+        checked={includeChildren}
+        onChange={(e) => handleIncludeChildrenChange(e.target.checked)}
+      />
 
       {applyResult !== null && (
         <Button onClick={() => void handleRollback()} type="button" disabled={isRollingBack}>
@@ -127,6 +145,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>ブログ</TableHead>
               <TableHead>モジュールID</TableHead>
               <TableHead>現在のモジュール</TableHead>
               <TableHead>移行先</TableHead>
@@ -136,7 +155,8 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
           </TableHeader>
           <TableBody>
             {modules.map((candidate) => (
-              <TableRow key={candidate.moduleId}>
+              <TableRow key={`${candidate.moduleBlogId}-${candidate.moduleId}`}>
+                <TableCell>{blogLabel(candidate.blogName, candidate.moduleBlogId)}</TableCell>
                 <TableCell>{candidate.moduleIdentifier}</TableCell>
                 <TableCell>{candidate.moduleName}</TableCell>
                 <TableCell>{candidate.targetModuleName ?? '-'}</TableCell>

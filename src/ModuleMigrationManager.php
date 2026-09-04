@@ -2,6 +2,7 @@
 
 namespace Acms\Plugins\DeprecatedModuleMigration;
 
+use ACMS_Filter;
 use Acms\Services\Facades\Config;
 use Acms\Services\Facades\Database as DB;
 use Acms\Plugins\DeprecatedModuleMigration\Snapshot\ModuleSnapshotRepository;
@@ -294,6 +295,61 @@ final class ModuleMigrationManager
                 'snapshot_id' => $snapshotId,
             ]);
         });
+    }
+
+    /**
+     * 指定ブログ配下の子孫ブログ(全階層・公開状態のみ)のIDをblog_left昇順(深さ優先)で
+     * 列挙する(ルートブログから子ブログ横断で非推奨モジュールを検出する
+     * 「配下のブログを含める」オプション向け)。
+     *
+     * コア標準の ACMS_Filter::blogTree($SQL, $bid, 'descendant') に委譲する
+     * (blogテーブルのネステッドセット方式(blog_left/blog_right)によるツリー検索は
+     * コア側の実装に追従し、プラグイン側で独自にnested setの比較ロジックを
+     * 再実装しない)。
+     *
+     * @return int[]
+     */
+    public function descendantBlogIds(int $blogId): array
+    {
+        $sql = SQL::newSelect('blog');
+        $sql->addSelect('blog_id');
+        ACMS_Filter::blogTree($sql, $blogId, 'descendant');
+        $sql->addWhereOpr('blog_status', 'open');
+        $sql->setOrder('blog_left');
+
+        /** @var list<array{blog_id: int|string}> $rows */
+        $rows = DB::query($sql->get(dsn()), 'all');
+
+        return array_map(fn (array $row): int => (int) $row['blog_id'], $rows);
+    }
+
+    /**
+     * 指定したblogIdをキーにブログ名を引けるマップを返す(一覧画面で所属ブログ名を
+     * 表示するため)。
+     *
+     * @param int[] $blogIds
+     * @return array<int, string>
+     */
+    public function blogNames(array $blogIds): array
+    {
+        if ($blogIds === []) {
+            return [];
+        }
+
+        $sql = SQL::newSelect('blog');
+        $sql->addSelect('blog_id');
+        $sql->addSelect('blog_name');
+        $sql->addWhereIn('blog_id', $blogIds);
+
+        /** @var list<array{blog_id: int|string, blog_name: string}> $rows */
+        $rows = DB::query($sql->get(dsn()), 'all');
+
+        $names = [];
+        foreach ($rows as $row) {
+            $names[(int) $row['blog_id']] = $row['blog_name'];
+        }
+
+        return $names;
     }
 
     /**

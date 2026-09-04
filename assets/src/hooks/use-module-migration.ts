@@ -14,6 +14,10 @@ export function useModuleMigration(blogId: number) {
   const [isDiffLoading, setIsDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [applyResult, setApplyResult] = useState<MigrationApplyResponse | null>(null);
+  // 直前に適用したモジュールの所属ブログID。applyResponseにはblogIdが含まれないため、
+  // ここに保持しておきロールバック時(rollbackMigrationにはsnapshotの所有ブログIDが
+  // 必要)に使う。
+  const [appliedBlogId, setAppliedBlogId] = useState<number | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [isRollingBack, setIsRollingBack] = useState(false);
 
@@ -26,47 +30,53 @@ export function useModuleMigration(blogId: number) {
   // 判定できるようにする。
   const isApplyingRef = useRef(false);
   const isRollingBackRef = useRef(false);
+  // 直近のloadModules()呼び出しで使われたincludeChildrenを覚えておき、apply()/rollback()
+  // 成功後の再取得で同じ範囲(自ブログのみ/子ブログ込み)を維持する。
+  const includeChildrenRef = useRef(false);
 
-  const loadModules = useCallback(async (): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await detectModules(blogId);
-      setModules(response.modules);
-    } catch (e) {
-      setError(toErrorMessage(e, '一覧の取得に失敗しました。'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [blogId]);
-
-  const loadDiff = useCallback(
-    async (moduleId: number): Promise<void> => {
-      const requestId = ++diffRequestSeq.current;
-      setDiffError(null);
-      setDiffResult(null);
-      setIsDiffLoading(true);
+  const loadModules = useCallback(
+    async (includeChildren?: boolean): Promise<void> => {
+      if (includeChildren !== undefined) {
+        includeChildrenRef.current = includeChildren;
+      }
+      setIsLoading(true);
+      setError(null);
       try {
-        const response = await fetchDiff(blogId, moduleId);
-        if (diffRequestSeq.current !== requestId) {
-          // 別のモジュールへ切り替える(=clearDiff/loadDiffが呼ばれ世代が進んだ)などして
-          // このリクエストが既に古くなっている場合、結果を反映しない。
-          return;
-        }
-        setDiffResult(response);
+        const response = await detectModules(blogId, includeChildrenRef.current);
+        setModules(response.modules);
       } catch (e) {
-        if (diffRequestSeq.current !== requestId) {
-          return;
-        }
-        setDiffError(toErrorMessage(e, '差分の取得に失敗しました。'));
+        setError(toErrorMessage(e, '一覧の取得に失敗しました。'));
       } finally {
-        if (diffRequestSeq.current === requestId) {
-          setIsDiffLoading(false);
-        }
+        setIsLoading(false);
       }
     },
     [blogId]
   );
+
+  const loadDiff = useCallback(async (moduleId: number, moduleBlogId: number): Promise<void> => {
+    const requestId = ++diffRequestSeq.current;
+    setDiffError(null);
+    setDiffResult(null);
+    setIsDiffLoading(true);
+    try {
+      const response = await fetchDiff(moduleBlogId, moduleId);
+      if (diffRequestSeq.current !== requestId) {
+        // 別のモジュールへ切り替える(=clearDiff/loadDiffが呼ばれ世代が進んだ)などして
+        // このリクエストが既に古くなっている場合、結果を反映しない。
+        return;
+      }
+      setDiffResult(response);
+    } catch (e) {
+      if (diffRequestSeq.current !== requestId) {
+        return;
+      }
+      setDiffError(toErrorMessage(e, '差分の取得に失敗しました。'));
+    } finally {
+      if (diffRequestSeq.current === requestId) {
+        setIsDiffLoading(false);
+      }
+    }
+  }, []);
 
   const clearDiff = useCallback((): void => {
     diffRequestSeq.current += 1;
@@ -76,7 +86,7 @@ export function useModuleMigration(blogId: number) {
   }, []);
 
   const apply = useCallback(
-    async (moduleId: number, optIn: boolean = false): Promise<MigrationApplyResponse | null> => {
+    async (moduleId: number, moduleBlogId: number, optIn: boolean = false): Promise<MigrationApplyResponse | null> => {
       if (isApplyingRef.current) {
         return null;
       }
@@ -84,8 +94,9 @@ export function useModuleMigration(blogId: number) {
       setIsApplying(true);
       setError(null);
       try {
-        const response = await applyMigration(blogId, moduleId, optIn);
+        const response = await applyMigration(moduleBlogId, moduleId, optIn);
         setApplyResult(response);
+        setAppliedBlogId(moduleBlogId);
         clearDiff();
         await loadModules();
         return response;
@@ -97,11 +108,11 @@ export function useModuleMigration(blogId: number) {
         setIsApplying(false);
       }
     },
-    [blogId, loadModules, clearDiff]
+    [loadModules, clearDiff]
   );
 
   const rollback = useCallback(
-    async (snapshotId: number): Promise<boolean> => {
+    async (snapshotId: number, snapshotBlogId: number): Promise<boolean> => {
       if (isRollingBackRef.current) {
         return false;
       }
@@ -109,8 +120,9 @@ export function useModuleMigration(blogId: number) {
       setIsRollingBack(true);
       setError(null);
       try {
-        await rollbackMigration(blogId, snapshotId);
+        await rollbackMigration(snapshotBlogId, snapshotId);
         setApplyResult(null);
+        setAppliedBlogId(null);
         await loadModules();
         return true;
       } catch (e) {
@@ -121,7 +133,7 @@ export function useModuleMigration(blogId: number) {
         setIsRollingBack(false);
       }
     },
-    [blogId, loadModules]
+    [loadModules]
   );
 
   return {
@@ -132,6 +144,7 @@ export function useModuleMigration(blogId: number) {
     isDiffLoading,
     diffError,
     applyResult,
+    appliedBlogId,
     isApplying,
     isRollingBack,
     loadModules,

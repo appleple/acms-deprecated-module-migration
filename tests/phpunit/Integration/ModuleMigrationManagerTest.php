@@ -269,4 +269,87 @@ final class ModuleMigrationManagerTest extends DatabaseTestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->manager->diff($module);
     }
+
+    #[Test]
+    #[TestDox('descendantBlogIds()は子・孫など配下の全階層のブログIDを深さ優先(blog_left昇順)で返し、他系統のブログは含まない')]
+    public function descendantBlogIdsReturnsAllDescendantsAcrossLevels(): void
+    {
+        $rootId = BlogSeeder::seed(['blog_name' => '子孫テスト用ルート', 'blog_left' => 1, 'blog_right' => 8]);
+        $childId1 = BlogSeeder::seed([
+            'blog_name' => '子ブログ1',
+            'blog_parent' => $rootId,
+            'blog_left' => 2,
+            'blog_right' => 5,
+        ]);
+        $grandchildId = BlogSeeder::seed([
+            'blog_name' => '孫ブログ',
+            'blog_parent' => $childId1,
+            'blog_left' => 3,
+            'blog_right' => 4,
+        ]);
+        $childId2 = BlogSeeder::seed([
+            'blog_name' => '子ブログ2',
+            'blog_parent' => $rootId,
+            'blog_left' => 6,
+            'blog_right' => 7,
+        ]);
+        $unrelatedId = BlogSeeder::seed(['blog_name' => '無関係な別系統のブログ', 'blog_left' => 1, 'blog_right' => 2]);
+
+        $descendantIds = $this->manager->descendantBlogIds($rootId);
+
+        $this->assertSame([$childId1, $grandchildId, $childId2], $descendantIds);
+        $this->assertNotContains($unrelatedId, $descendantIds);
+    }
+
+    #[Test]
+    #[TestDox('descendantBlogIds()は非公開(close)のブログを含まない')]
+    public function descendantBlogIdsExcludesClosedBlogs(): void
+    {
+        $rootId = BlogSeeder::seed(['blog_name' => 'ルート', 'blog_left' => 1, 'blog_right' => 6]);
+        $openChildId = BlogSeeder::seed([
+            'blog_name' => '公開子ブログ',
+            'blog_parent' => $rootId,
+            'blog_left' => 2,
+            'blog_right' => 3,
+        ]);
+        BlogSeeder::seed([
+            'blog_name' => '非公開子ブログ',
+            'blog_parent' => $rootId,
+            'blog_status' => 'close',
+            'blog_left' => 4,
+            'blog_right' => 5,
+        ]);
+
+        $descendantIds = $this->manager->descendantBlogIds($rootId);
+
+        $this->assertSame([$openChildId], $descendantIds);
+    }
+
+    #[Test]
+    #[TestDox('descendantBlogIds()は子孫を持たないブログに対して空配列を返す')]
+    public function descendantBlogIdsReturnsEmptyArrayWhenNoDescendants(): void
+    {
+        $leafId = BlogSeeder::seed(['blog_name' => '子孫なしブログ', 'blog_left' => 1, 'blog_right' => 2]);
+
+        $this->assertSame([], $this->manager->descendantBlogIds($leafId));
+    }
+
+    #[Test]
+    #[TestDox('blogNames()は指定したblogIdをキーにブログ名を返す')]
+    public function blogNamesReturnsNameMapForGivenBlogIds(): void
+    {
+        $otherBlogId = BlogSeeder::seed(['blog_name' => '別ブログ']);
+
+        $names = $this->manager->blogNames([$this->blogId, $otherBlogId]);
+
+        $this->assertSame('Manager統合テスト用ブログ', $names[$this->blogId]);
+        $this->assertSame('別ブログ', $names[$otherBlogId]);
+    }
+
+    #[Test]
+    #[TestDox('blogNames()は空配列を渡すと空配列を返す(クエリを発行しない)')]
+    public function blogNamesReturnsEmptyArrayForEmptyInput(): void
+    {
+        $this->assertSame([], $this->manager->blogNames([]));
+    }
 }
