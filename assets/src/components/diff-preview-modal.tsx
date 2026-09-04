@@ -3,6 +3,7 @@ import Button from '@ablogcms/components/button';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '@ablogcms/components/modal';
 import { HStack } from '@ablogcms/components/stack';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ablogcms/components/table';
+import { useRef } from 'react';
 import type { MigrationDiffResponse } from '../types';
 
 interface DiffPreviewModalProps {
@@ -35,9 +36,26 @@ function DiffPreviewModal({
   isApplying = false,
 }: DiffPreviewModalProps) {
   const diff = diffResult?.diff ?? null;
+  // focus-trap(@ablogcms/react-hooks)は初回activate()時のtabbableノード集合をスナップショット
+  // するだけで、その後diffの読み込み完了によりテーブル行などモーダル内のtabbable要素が
+  // 増減してもtabbableGroupsを再計算しない。initialFocus/fallbackFocusを未指定のままだと、
+  // 古いノード参照からfocus()を持たない値が解決され続けてfocus-trap内部で無限再帰し、
+  // "Maximum call stack size exceeded"でアプリ全体が停止する不具合があった。ここでは常に
+  // DOM上に存在し続け、disabledにもならない「閉じる」ボタンをinitialFocus/fallbackFocusとして
+  // 明示することで、tabbable要素集合の変化に左右されないフォーカス解決先を保証する。
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="large" isScrollable>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="large"
+      isScrollable
+      focusTrapOptions={{
+        initialFocus: () => closeButtonRef.current ?? false,
+        fallbackFocus: () => closeButtonRef.current ?? document.body,
+      }}
+    >
       <ModalHeader>差分プレビュー</ModalHeader>
       <ModalBody>
         {error !== null ? (
@@ -103,7 +121,7 @@ function DiffPreviewModal({
       </ModalBody>
       <ModalFooter>
         <HStack display="inline-flex">
-          <Button onClick={onClose} type="button">
+          <Button ref={closeButtonRef} onClick={onClose} type="button">
             閉じる
           </Button>
           <Button
