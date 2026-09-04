@@ -9,6 +9,7 @@ import type { MigrationDiffResponse } from '../types';
 interface DiffPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAfterClose?: () => void;
   diffResult: MigrationDiffResponse | null;
   isLoading?: boolean;
   error?: string | null;
@@ -29,6 +30,7 @@ function formatValue(value: unknown): string {
 function DiffPreviewModal({
   isOpen,
   onClose,
+  onAfterClose,
   diffResult,
   isLoading = false,
   error = null,
@@ -49,6 +51,7 @@ function DiffPreviewModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      onAfterClose={onAfterClose}
       size="large"
       isScrollable
       focusTrapOptions={{

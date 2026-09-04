@@ -64,6 +64,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
   } = useModuleMigration(blogId);
   const [selectedModule, setSelectedModule] = useState<ModuleMigrationCandidate | null>(null);
   const [includeChildren, setIncludeChildren] = useState(true);
+  const [pendingApplyAlert, setPendingApplyAlert] = useState<string | null>(null);
 
   useEffectOnce(() => {
     void loadModules(includeChildren);
@@ -100,8 +101,21 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
     const optIn = selectedModule.rank === 'C';
     const response = await apply(selectedModule.moduleId, selectedModule.moduleBlogId, optIn);
     if (response !== null) {
+      // DiffPreviewModalのfocus-trap/スクロールロックがクローズアニメーション完了(onAfterClose)
+      // まで生き続けるため、ここで直接dialog.alertを開くと本体側のfocus-trapと同時に活性化し、
+      // 互いにフォーカスを奪い合って無限再帰(Maximum call stack size exceeded)に陥り、
+      // スクロールロックも解除されないまま残ってしまう。モーダルが完全に閉じ終わってから
+      // alertを開くよう、表示内容だけを保持してonAfterCloseに委ねる。
+      setPendingApplyAlert('移行を適用しました');
       setSelectedModule(null);
-      await ACMS.Library.dialog.alert('移行を適用しました');
+    }
+  };
+
+  const handleDiffModalAfterClose = () => {
+    if (pendingApplyAlert !== null) {
+      const message = pendingApplyAlert;
+      setPendingApplyAlert(null);
+      void ACMS.Library.dialog.alert(message);
     }
   };
 
@@ -177,6 +191,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
       <DiffPreviewModal
         isOpen={selectedModule !== null}
         onClose={handleCloseDiff}
+        onAfterClose={handleDiffModalAfterClose}
         diffResult={diffResult}
         isLoading={isDiffLoading}
         error={diffError}
