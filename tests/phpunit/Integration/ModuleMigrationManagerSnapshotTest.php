@@ -4,6 +4,7 @@ namespace Acms\Plugins\DeprecatedModuleMigration\Tests\Integration;
 
 use Acms\Services\Facades\Database as DB;
 use Acms\Plugins\DeprecatedModuleMigration\ModuleMigrationManager;
+use Acms\Plugins\DeprecatedModuleMigration\Snapshot\SnapshotSummary;
 use Acms\TestingFramework\DatabaseTestCase;
 use Acms\TestingFramework\Seeder\BlogSeeder;
 use Acms\TestingFramework\Seeder\ModuleSeeder;
@@ -96,7 +97,7 @@ final class ModuleMigrationManagerSnapshotTest extends DatabaseTestCase
         $childOutcome = $this->manager->applyWithSnapshot($childModule, $this->manager->diff($childModule), userId: 1);
 
         $summaries = $this->manager->listSnapshots([$this->blogId, $childBlogId]);
-        $snapshotIds = array_map(fn ($s) => $s->snapshotId, $summaries);
+        $snapshotIds = array_map(fn (SnapshotSummary $s): int => $s->snapshotId, $summaries);
 
         $this->assertCount(2, $summaries);
         $this->assertContains($parentOutcome['snapshotId'], $snapshotIds);

@@ -8,6 +8,7 @@ use Acms\Services\Facades\Logger;
 use Acms\Services\Update\Database\SchemaDefinitions;
 use Acms\TestingFramework\DatabaseTestCase;
 use Monolog\Handler\TestHandler;
+use Monolog\Logger as MonologLogger;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
@@ -26,10 +27,18 @@ final class PluginSchemaMigratorTest extends DatabaseTestCase
     {
         $this->schemaDir = __DIR__ . '/../../../../src/schema';
         $definitions = SchemaDefinitions::fromYaml($this->schemaDir);
-        $this->table = array_key_first($definitions->schema);
+        $table = array_key_first($definitions->schema);
+        if ($table === null) {
+            throw new \RuntimeException('スキーマ定義が空です: ' . $this->schemaDir);
+        }
+        $this->table = $table;
 
         $this->logHandler = new TestHandler();
-        Logger::getInstance()->pushHandler($this->logHandler);
+        // Logger::getInstance()はFacade基底クラスの制約上@return mixedであり、
+        // 実体は必ずMonolog\Logger(LoggerServiceProvider::register()参照)。
+        /** @var MonologLogger $logger */
+        $logger = Logger::getInstance();
+        $logger->pushHandler($this->logHandler);
 
         // DDL(DROP/CREATE/ALTER)は暗黙コミットされトランザクションロールバックの対象外になるため、
         // テスト内でテーブルを一旦削除し、tearDown で必ず migrate() により復元する。
