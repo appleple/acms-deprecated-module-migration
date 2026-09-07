@@ -1,7 +1,6 @@
 # DeprecatedModuleMigration
 
 非推奨モジュールから代替モジュールへの設定移行を支援する **a-blog cms** のプラグインです。
-`acms-plugin-skeleton` をベースに、`ablogcms/testing-framework` によるテスト環境と CI/CD 一式を備えています。
 
 ## できること
 
