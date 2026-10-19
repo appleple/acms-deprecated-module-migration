@@ -325,6 +325,78 @@ describe('ModuleMigrationAdmin', () => {
   });
 
   describe('移行履歴', () => {
+    it('適用に成功したら、移行履歴を取得し直す', async () => {
+      const user = userEvent.setup();
+      const loadSnapshots = vi.fn();
+      mockedUseMigrationHistory.mockReturnValue({
+        snapshots: [],
+        isLoading: false,
+        error: null,
+        isRollingBack: false,
+        loadSnapshots,
+        rollback: vi.fn(),
+      });
+      const apply = vi.fn().mockResolvedValue(applyResponse());
+      mockedConfirm.mockResolvedValue(true);
+      mockedUseModuleMigration.mockReturnValue(
+        makeHookState({ modules: [candidate()], diffResult: diffResponse(), apply })
+      );
+
+      render(<ModuleMigrationAdmin blogId={1} />);
+      expect(loadSnapshots).toHaveBeenCalledTimes(1);
+      await user.click(screen.getByRole('button', { name: '差分を確認' }));
+      await user.click(screen.getByRole('button', { name: 'この内容で適用する' }));
+
+      await waitFor(() => expect(loadSnapshots).toHaveBeenCalledTimes(2));
+    });
+
+    it('適用に失敗したら、移行履歴は取得し直さない', async () => {
+      const user = userEvent.setup();
+      const loadSnapshots = vi.fn();
+      mockedUseMigrationHistory.mockReturnValue({
+        snapshots: [],
+        isLoading: false,
+        error: null,
+        isRollingBack: false,
+        loadSnapshots,
+        rollback: vi.fn(),
+      });
+      const apply = vi.fn().mockResolvedValue(null);
+      mockedConfirm.mockResolvedValue(true);
+      mockedUseModuleMigration.mockReturnValue(
+        makeHookState({ modules: [candidate()], diffResult: diffResponse(), apply })
+      );
+
+      render(<ModuleMigrationAdmin blogId={1} />);
+      await user.click(screen.getByRole('button', { name: '差分を確認' }));
+      await user.click(screen.getByRole('button', { name: 'この内容で適用する' }));
+
+      await waitFor(() => expect(apply).toHaveBeenCalled());
+      expect(loadSnapshots).toHaveBeenCalledTimes(1);
+    });
+
+    it('「直前の適用を元に戻す」に成功したら、移行履歴を取得し直す', async () => {
+      const user = userEvent.setup();
+      const loadSnapshots = vi.fn();
+      mockedUseMigrationHistory.mockReturnValue({
+        snapshots: [],
+        isLoading: false,
+        error: null,
+        isRollingBack: false,
+        loadSnapshots,
+        rollback: vi.fn(),
+      });
+      mockedConfirm.mockResolvedValue(true);
+      mockedUseModuleMigration.mockReturnValue(
+        makeHookState({ applyResult: applyResponse(), appliedBlogId: 1, rollback: vi.fn().mockResolvedValue(true) })
+      );
+
+      render(<ModuleMigrationAdmin blogId={1} />);
+      await user.click(screen.getByRole('button', { name: '直前の適用を元に戻す' }));
+
+      await waitFor(() => expect(loadSnapshots).toHaveBeenCalledTimes(2));
+    });
+
     it('移行履歴セクションを表示し、そこでのロールバック成功時にモジュール一覧を再取得する', () => {
       const loadModules = vi.fn();
       mockedUseModuleMigration.mockReturnValue(makeHookState({ loadModules }));

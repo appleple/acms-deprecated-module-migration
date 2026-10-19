@@ -2,6 +2,7 @@ import Badge from '@ablogcms/components/badge';
 import Button from '@ablogcms/components/button';
 import Checkbox from '@ablogcms/components/checkbox';
 import Spinner from '@ablogcms/components/spinner';
+import { HStack, VStack } from '@ablogcms/components/stack';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ablogcms/components/table';
 import { useEffectOnce } from '@ablogcms/react-hooks';
 import { useState } from 'react';
@@ -62,6 +63,10 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
   const [selectedModule, setSelectedModule] = useState<ModuleMigrationCandidate | null>(null);
   const [includeChildren, setIncludeChildren] = useState(true);
   const [pendingApplyAlert, setPendingApplyAlert] = useState<string | null>(null);
+  // 移行履歴は MigrationHistory が自分で取得して持つため、適用やロールバックを行った
+  // こちら側から値を渡して取得し直させる。渡さないと、ページを開き直すまで履歴が古いまま残る。
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const refreshHistory = () => setHistoryRefreshKey((key) => key + 1);
 
   useEffectOnce(() => {
     void loadModules(includeChildren);
@@ -104,6 +109,7 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
       // スクロールロックも解除されないまま残ってしまう。モーダルが完全に閉じ終わってから
       // alertを開くよう、表示内容だけを保持してonAfterCloseに委ねる。
       setPendingApplyAlert('移行を適用しました');
+      refreshHistory();
       setSelectedModule(null);
     }
   };
@@ -126,32 +132,42 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
     }
     const succeeded = await rollback(applyResult.snapshotId, appliedBlogId);
     if (succeeded) {
+      refreshHistory();
       await ACMS.Library.dialog.alert('ロールバックしました');
     }
   };
 
   return (
-    <div>
-      <p>旧モジュールから代替モジュールへの設定移行を支援します。テンプレートファイルの書き換えは行いません。</p>
+    // 並ぶ要素どうしの余白を、個別のmarginではなくStackのspacingでそろえる。
+    <VStack spacing="24px" align="stretch">
+      <p style={{ margin: 0 }}>
+        旧モジュールから代替モジュールへの設定移行を支援します。テンプレートファイルの書き換えは行いません。
+      </p>
 
-      {error !== null && <p role="alert">{error}</p>}
-
-      <Checkbox
-        label="配下のブログを含める"
-        checked={includeChildren}
-        onChange={(e) => handleIncludeChildrenChange(e.target.checked)}
-      />
-
-      {applyResult !== null && (
-        <Button onClick={() => void handleRollback()} type="button" disabled={isRollingBack}>
-          直前の適用を元に戻す
-        </Button>
+      {error !== null && (
+        <p role="alert" style={{ margin: 0 }}>
+          {error}
+        </p>
       )}
+
+      <HStack spacing="16px" align="center">
+        <Checkbox
+          label="配下のブログを含める"
+          checked={includeChildren}
+          onChange={(e) => handleIncludeChildrenChange(e.target.checked)}
+        />
+
+        {applyResult !== null && (
+          <Button onClick={() => void handleRollback()} type="button" disabled={isRollingBack}>
+            直前の適用を元に戻す
+          </Button>
+        )}
+      </HStack>
 
       {isLoading ? (
         <Spinner size={20} />
       ) : modules.length === 0 ? (
-        <p>対象の非推奨モジュールは見つかりませんでした</p>
+        <p style={{ margin: 0 }}>対象の非推奨モジュールは見つかりませんでした</p>
       ) : (
         <Table>
           <TableHeader>
@@ -199,9 +215,10 @@ function ModuleMigrationAdmin({ blogId }: ModuleMigrationAdminProps) {
       <MigrationHistory
         blogId={blogId}
         includeChildren={includeChildren}
+        refreshKey={historyRefreshKey}
         onRollbackSuccess={() => void loadModules()}
       />
-    </div>
+    </VStack>
   );
 }
 
