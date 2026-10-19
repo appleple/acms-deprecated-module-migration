@@ -6,6 +6,7 @@ use Acms\Services\Facades\Application;
 use Acms\Services\Facades\LocalStorage;
 use Acms\Services\Facades\Media;
 use Acms\Services\Media\Helper as MediaHelper;
+use Acms\Services\Media\MediaImportPreview;
 use Acms\Services\Facades\PublicStorage;
 
 /**
@@ -58,13 +59,16 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
 
             $filename = LocalStorage::mbBasename($relativePath);
             // 内容が同じ既存メディアが再利用される場合、そのメディア自身のリンク先は上書きしない
-            if ($coreSupportsBlogId) {
-                $isReused = $media->previewRegisterLocalFile($tmpFile, $filename, $blogId)->isDuplicate();
-                $mediaId = $media->registerLocalFile($tmpFile, $filename, $blogId);
-            } else {
-                $isReused = $media->previewRegisterLocalFile($tmpFile, $filename)->isDuplicate();
-                $mediaId = $media->registerLocalFile($tmpFile, $filename);
+            // 登録先のブログ ID を渡す版と渡さない版の両方を、同じコードで呼ぶ。
+            // 静的解析は古いコア(引数2つ)を基準に走るため、引数の数を直接書くとエラーになる。
+            $arguments = $coreSupportsBlogId ? [$tmpFile, $filename, $blogId] : [$tmpFile, $filename];
+            $preview = (new \ReflectionMethod($media, 'previewRegisterLocalFile'))->invokeArgs($media, $arguments);
+            $registered = (new \ReflectionMethod($media, 'registerLocalFile'))->invokeArgs($media, $arguments);
+            if (!$preview instanceof MediaImportPreview || !is_int($registered)) {
+                throw new \RuntimeException("banner_img のメディア登録で想定外の結果が返りました: {$relativePath}");
             }
+            $isReused = $preview->isDuplicate();
+            $mediaId = $registered;
 
             if (!$isReused && $linkUrl !== '') {
                 Media::updateMedia($mediaId, ['field_2' => $linkUrl]);
