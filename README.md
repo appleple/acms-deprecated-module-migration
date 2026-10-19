@@ -27,7 +27,7 @@
 
 ## 動作環境
 
-- a-blog cms: Ver. 3.2.29 以降 (3.3+ not tested yet)
+- a-blog cms: Ver. 3.2.36 以降 (3.3+ not tested yet)
 - PHP: 8.1 – 8.5 (8.6+ not tested yet)
 
 ## ダウンロード

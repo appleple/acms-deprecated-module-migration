@@ -19,6 +19,8 @@ use Acms\Services\Facades\Asset;
  */
 class ServiceProvider extends ACMS_App
 {
+    private const MINIMUM_ACMS_VERSION = '3.2.36';
+
     /**
      * @var string
      */
@@ -86,7 +88,18 @@ class ServiceProvider extends ACMS_App
      */
     public function checkRequirements()
     {
-        return true;
+        return defined('VERSION') && is_string(VERSION) && self::isSupportedVersion(VERSION);
+    }
+
+    /**
+     * 対応する a-blog cms のバージョンかどうか。
+     *
+     * Banner の画像移行が、Ver. 3.2.36 で入った Media::registerLocalFile() を使うため、
+     * 下限を 3.2.36 にしている。
+     */
+    public static function isSupportedVersion(string $version): bool
+    {
+        return version_compare($version, self::MINIMUM_ACMS_VERSION, '>=');
     }
 
     /**

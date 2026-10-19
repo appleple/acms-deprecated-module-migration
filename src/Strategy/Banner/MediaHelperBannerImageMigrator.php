@@ -2,22 +2,26 @@
 
 namespace Acms\Plugins\DeprecatedModuleMigration\Strategy\Banner;
 
-use Acms\Services\Facades\Database as DB;
+use Acms\Services\Facades\Application;
 use Acms\Services\Facades\LocalStorage;
 use Acms\Services\Facades\Media;
+use Acms\Services\Media\Helper as MediaHelper;
 use Acms\Services\Facades\PublicStorage;
-use SQL;
 
 /**
- * banner_img(ファイルパス文字列)を、既存のメディア登録経路
- * (Media::storeImage() / Media::insertMedia())を通じてMedia_Bannerのメディアレコードへ
- * 実データ移行する。
+ * banner_img(ファイルパス文字列)を、コアのメディア登録 API(Media::registerLocalFile())で
+ * Media_Banner のメディアレコードへ実データ移行する。
  *
- * 独自にmediaテーブルへ直接INSERTすると必須カラムの欠落・不整合のリスクが高いため、
- * 既存の画像最適化・サムネイル生成ロジックをそのまま再利用する
- * (detailed-design.html「画像移行バッチの処理フロー」参照)。Mediaファサードは
- * DIコンテナが保持するシングルトンを解決するため、`new Media\Helper()` で直接
- * インスタンス化せずファサード経由で呼ぶ(本体のサービス層規約と同じ)。
+ * registerLocalFile() は CSV インポートのメディア取り込み(Ver. 3.2.36 から)と同じ入口で、
+ * 画像の保存(一覧用の縮小画像を含む)・内容ハッシュの計算・media テーブルへの登録を
+ * まとめて行う。内容が同じ画像が既にメディアにあれば、新規登録せずそのメディアを再利用する。
+ * 以前は Media::storeImage() と Media::insertMedia() を直接呼んでいたが、一時ファイルに
+ * 拡張子が無く、一覧用の縮小画像(tiny-)が作られないせいで、メディアの一覧と編集画面の
+ * サムネイルが空になっていた。ハッシュも登録されていなかった。
+ *
+ * Why not MediaSourceImporter(media.source-importer): 取り込める場所が CSV インポート専用の
+ * ディレクトリ(archives/csv-import/source/)に限られ、Banner の画像が置かれている
+ * archives/ 配下の任意のパスを渡せない。
  *
  * 既知の制約: Media::insertMedia() は media_blog_id にグローバル定数 BID
  * (現在のリクエストコンテキストのブログ)をそのまま使う実装になっており、移行対象の
@@ -39,11 +43,7 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
             );
         }
 
-        $mediaId = (int) DB::query(SQL::nextval('media_id', dsn()), 'seq');
-        $tmpFile = tempnam(sys_get_temp_dir(), 'acms_banner_migration_');
-        if ($tmpFile === false) {
-            throw new \RuntimeException('一時ファイルの作成に失敗しました。');
-        }
+        $tmpFile = self::temporaryFilePath($relativePath);
 
         try {
             $contents = PublicStorage::get(ARCHIVES_DIR . $relativePath);
@@ -52,21 +52,34 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
             }
             LocalStorage::put($tmpFile, $contents);
 
-            $stored = Media::storeImage($tmpFile, LocalStorage::mbBasename($relativePath));
+            $filename = LocalStorage::mbBasename($relativePath);
+            // 内容が同じ既存メディアが再利用される場合、そのメディア自身のリンク先は上書きしない
+            $media = Application::make('media');
+            assert($media instanceof MediaHelper);
+            $isReused = $media->previewRegisterLocalFile($tmpFile, $filename)->isDuplicate();
+            $mediaId = $media->registerLocalFile($tmpFile, $filename);
 
-            Media::insertMedia($mediaId, [
-                'type' => 'image',
-                'extension' => $stored['type'],
-                'path' => $stored['path'],
-                'name' => $stored['name'],
-                'filesize' => $stored['filesize'],
-                'size' => $stored['size'],
-                'field_2' => $linkUrl,
-            ]);
+            if (!$isReused && $linkUrl !== '') {
+                Media::updateMedia($mediaId, ['field_2' => $linkUrl]);
+            }
         } finally {
             LocalStorage::remove($tmpFile);
         }
 
         return $mediaId;
+    }
+
+    /**
+     * コアへ渡す一時ファイルのパスを返す。元のファイルの拡張子を保つ。
+     *
+     * Why not tempnam(): 拡張子の無い一時ファイルを渡すと、コアが縮小画像を作れず、
+     * メディアの一覧と編集画面のサムネイルが空になる。
+     */
+    public static function temporaryFilePath(string $relativePath): string
+    {
+        $extension = pathinfo($relativePath, PATHINFO_EXTENSION);
+        $suffix = $extension !== '' ? '.' . $extension : '';
+
+        return rtrim(sys_get_temp_dir(), '/') . '/acms_banner_migration_' . bin2hex(random_bytes(8)) . $suffix;
     }
 }
