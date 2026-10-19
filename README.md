@@ -30,6 +30,8 @@
 - a-blog cms: Ver. 3.2.36 以降 (3.3+ not tested yet)
 - PHP: 8.1 – 8.5 (8.6+ not tested yet)
 
+Banner の画像を子ブログのメディアとして登録する移行は、a-blog cms Ver. 3.2.39 以降で動きます。それより前のバージョンでは、画像の登録先を指定できないため、プラグインの画面を開いているブログ（拡張アプリをインストールしたルートブログ）にある Banner だけが移行できます。子ブログの Banner は、適用時にエラーで止まります。
+
 ## ダウンロード
 
 [DeprecatedModuleMigration for a-blog cms](https://github.com/appleple/acms-deprecated-module-migration/releases/latest/download/DeprecatedModuleMigration.zip)

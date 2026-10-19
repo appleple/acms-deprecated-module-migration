@@ -61,4 +61,28 @@ final class MediaHelperBannerImageMigratorTest extends TestCase
             MediaHelperBannerImageMigrator::temporaryFilePath('banner/foo.png')
         );
     }
+
+    /**
+     * @return array<string, array{int, int, bool, bool}>
+     */
+    public static function registrationTargetProvider(): array
+    {
+        return [
+            '今のブログと同じなら、コアが対応していなくても登録できる' => [2, 2, false, true],
+            '今のブログと同じなら、コアが対応していても登録できる' => [2, 2, true, true],
+            '別のブログは、コアが登録先のブログを指定できるときだけ登録できる' => [3, 2, true, true],
+            '別のブログは、コアが登録先のブログを指定できないと登録できない' => [3, 2, false, false],
+        ];
+    }
+
+    #[Test]
+    #[TestDox('移行先ブログ $blogId、今のブログ $currentBlogId、コアの対応 $coreSupportsBlogId: 登録できるか = $expected')]
+    #[DataProvider('registrationTargetProvider')]
+    public function canRegisterForBlog(int $blogId, int $currentBlogId, bool $coreSupportsBlogId, bool $expected): void
+    {
+        $this->assertSame(
+            $expected,
+            MediaHelperBannerImageMigrator::canRegisterForBlog($blogId, $currentBlogId, $coreSupportsBlogId)
+        );
+    }
 }

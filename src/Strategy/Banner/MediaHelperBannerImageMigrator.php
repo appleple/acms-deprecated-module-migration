@@ -23,11 +23,12 @@ use Acms\Services\Facades\PublicStorage;
  * ディレクトリ(archives/csv-import/source/)に限られ、Banner の画像が置かれている
  * archives/ 配下の任意のパスを渡せない。
  *
- * 既知の制約: Media::insertMedia() は media_blog_id にグローバル定数 BID
- * (現在のリクエストコンテキストのブログ)をそのまま使う実装になっており、移行対象の
- * $blogId を明示的に指定する経路が無い。グローバル定数を書き換えるのは副作用が大きく
- * 安全でないため、$blogId が現在の管理画面コンテキスト(BID)と一致しない場合は
+ * 登録先のブログ: コアの Ver. 3.2.39 から、registerLocalFile() に登録先のブログ ID を渡せる。
+ * それより前のコアは media_blog_id に定数 BID(現在の管理画面のブログ)をそのまま使い、
+ * 指定する経路が無い。グローバル定数を書き換えるのは副作用が大きく安全でないため、
+ * 登録先を指定できないコアでは、$blogId が現在のブログ(BID)と一致しない場合に
  * 「別ブログのメディアとして誤登録される」事故を避けるため実行を拒否する。
+ * 指定できるかどうかは、メソッドの引数を調べて判断する(バージョン番号には頼らない)。
  */
 final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterface
 {
@@ -36,10 +37,13 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
         if (!SafeRelativePath::isSafe($relativePath)) {
             throw new \RuntimeException("banner_img が不正なパスのため移行できません: {$relativePath}");
         }
-        if ($blogId !== BID) {
+        $media = Application::make('media');
+        assert($media instanceof MediaHelper);
+        $coreSupportsBlogId = self::coreSupportsBlogId($media);
+        if (!self::canRegisterForBlog($blogId, BID, $coreSupportsBlogId)) {
             throw new \RuntimeException(
-                '現在の管理画面コンテキストと異なるブログのBanner画像移行はサポートしていません。'
-                    . 'このブログの管理画面から実行してください。'
+                '現在の管理画面コンテキストと異なるブログのBanner画像移行は、お使いのa-blog cmsではサポートしていません。'
+                    . 'Ver. 3.2.39 以降にアップデートするか、このブログの管理画面から実行してください。'
             );
         }
 
@@ -54,10 +58,13 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
 
             $filename = LocalStorage::mbBasename($relativePath);
             // 内容が同じ既存メディアが再利用される場合、そのメディア自身のリンク先は上書きしない
-            $media = Application::make('media');
-            assert($media instanceof MediaHelper);
-            $isReused = $media->previewRegisterLocalFile($tmpFile, $filename)->isDuplicate();
-            $mediaId = $media->registerLocalFile($tmpFile, $filename);
+            if ($coreSupportsBlogId) {
+                $isReused = $media->previewRegisterLocalFile($tmpFile, $filename, $blogId)->isDuplicate();
+                $mediaId = $media->registerLocalFile($tmpFile, $filename, $blogId);
+            } else {
+                $isReused = $media->previewRegisterLocalFile($tmpFile, $filename)->isDuplicate();
+                $mediaId = $media->registerLocalFile($tmpFile, $filename);
+            }
 
             if (!$isReused && $linkUrl !== '') {
                 Media::updateMedia($mediaId, ['field_2' => $linkUrl]);
@@ -67,6 +74,32 @@ final class MediaHelperBannerImageMigrator implements BannerImageMigratorInterfa
         }
 
         return $mediaId;
+    }
+
+    /**
+     * 移行先のブログへメディアを登録できるか。
+     *
+     * 今のブログと同じなら、コアが登録先を指定できなくても登録できる。別のブログは、
+     * コアが登録先のブログを指定できるときだけ登録できる。
+     */
+    public static function canRegisterForBlog(int $blogId, int $currentBlogId, bool $coreSupportsBlogId): bool
+    {
+        return $blogId === $currentBlogId || $coreSupportsBlogId;
+    }
+
+    /**
+     * コアの Media::registerLocalFile() / previewRegisterLocalFile() が、登録先のブログ ID を
+     * 引数で受け取れるか。受け取れない版(Ver. 3.2.38 まで)では引数が2つしかない。
+     */
+    private static function coreSupportsBlogId(MediaHelper $media): bool
+    {
+        foreach (['registerLocalFile', 'previewRegisterLocalFile'] as $method) {
+            if ((new \ReflectionMethod($media, $method))->getNumberOfParameters() < 3) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
